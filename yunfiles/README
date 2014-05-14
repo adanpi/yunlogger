@@ -19,6 +19,6 @@ $ scp radsys.tar.gz root:IP_yun:/www.tar.gz
 5. lo mismo para www.tar.gz
 yun$ tar -xzf www.tar.gz
 
-3. eliminar fichero descomprimido:
+6. eliminar fichero descomprimido:
 yun$ rm www.tar.gz
 
