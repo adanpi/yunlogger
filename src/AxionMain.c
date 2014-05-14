@@ -1,0 +1,629 @@
+
+/*
+AxionMain
+Version 1.0
+Autor Mosxos
+Modificado por Adan para SAICA Navarra
+Fecha Creación: 1/Nov/2009
+Modificaciones:
+Version 1.1
+	Corrección fallo programa no puede lanzar ordenes shell.
+Version 1.2
+	Actualización 2010 reset desde dataloger
+Version 1.3
+	Fallo envio medianoche dia siguiente
+*/
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include "logersaihbd.h"
+#define NUMPPPERR 30
+#define TIEMPOESPERA 300	//espera entre ciclos programa en segundos
+
+static char *saihbd = "SAIHBD=/flash/idata/";
+static char *version = "1.3 Fecha:28/10/2011 ";
+
+FILE *fhf;
+GN gn;
+BDCONF BdConf;
+int Pidlog();
+char name[192],path[92],aux[92];
+struct stat bufstat;
+
+char ch[133],bufpro[52][134];
+char bufppp[52][134];
+//char bufping[52][134];
+char pidppp1[7];
+int PacketesTx,PacketesRx,PacketesLx;
+char Tx[134],Rx[134],Lx[134];
+char buffer[134];
+unsigned long segjulact,segjulqm,ultimoEnvioFTP;
+
+struct tm *newtime;
+char *auxch;
+short flaggprs,flaghora,flagFTP;
+
+int debug,nmes,ndia,nano,hora,minuto,segundo;
+
+int main(int argc, char *argv[])
+{
+	short i,ipid,EstComAxis;
+	int numppp1;
+	struct timespec interval, remainder;
+	
+	debug=0;
+
+	if ( (argc==2) && (argv[1][1]=='v')){
+		printf("\n************************************");
+		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
+		printf("\n\t yunlogger Version: %s (%d seg)",version,TIEMPOESPERA);
+		printf("\n************************************\n");
+		return(0);
+	}
+	if ( (argc==4) && (argv[1][1]=='d')){
+		printf("\n************************************");
+		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
+		printf("\n\t yunlogger Version: %s (%d seg)",version,TIEMPOESPERA);
+		printf("**** MODO DEBUG **********");
+		printf("\n************************************\n");
+		debug=1;
+                ndia=nmes=nano=0;
+                if ((sscanf (argv[2],"%02d%*c%02d%*c%04d",&ndia,&nmes,&nano) > 5) || (ndia < 1) || (ndia >31)
+                        || (nmes < 1) || (nmes > 12) || (nano < 1900) || (nano > 2050)){
+                        printf("\n\tError_2 Parametros seg || DD-MM-AA HH:MM:SS\n");
+                        return(-1);}
+                hora=minuto=segundo=0;
+                if ((sscanf(argv[3],"%2d:%2d:%2d",&hora,&minuto,&segundo) > 3) || (hora < 0) || (hora > 23) ||
+                        (minuto < 0) || (minuto > 59) || (segundo < 0) || (segundo > 59)){
+                        printf("\n\tError_3 Parametros seg || DD-MM-AA HH:MM:SS\n");
+                        return(-1);}
+                segjulqm=time(NULL);
+                newtime=localtime(&segjulqm);
+                newtime->tm_year=nano-1900; newtime->tm_mon=nmes-1;
+                newtime->tm_mday=ndia; newtime->tm_hour=hora; newtime->tm_min=minuto;newtime->tm_sec=segundo;
+                segjulqm=mktime(newtime);
+		auxch=asctime(newtime);
+		printf("Fecha simulada: %s",auxch);
+		// simular envio 
+                segjulqm=((segjulqm/SEGPQM)*SEGPQM);
+               // if( (ultimoEnvioFTP + BdConf.remconf.frecuencia*60 ) < (segjulqm+30) ) flagFTP=1;
+
+               	EnvioFTP(segjulqm);
+		EnvioFTPHist(segjulqm);    // Enviar Historicos si es necesario cuando no se manda el actual
+
+		return(0);
+
+	}
+
+	if( i=putenv(saihbd) != 0){                             // Variable de Entorno SAIHBD=/home/logos/
+                sprintf(aux,"AxionMain:Variable de Entorno Error:%s",auxch);
+                AxisLog(aux);
+                exit(1);
+        };
+	if( (char *)getenv("SAIHBD") ==NULL){
+		printf("\n\tVariable Entorno SAIHBD NO SET");
+		return(1);}
+
+	strcpy(name,"AxionMain.pid");				// PID del Proceso
+	ipid=getpid();
+	PidLog(name,ipid);
+
+	segjulact=time(NULL);                                   // Hora Actual
+	ultimoEnvioFTP=segjulact;	
+	newtime=localtime(&segjulact);
+	auxch=asctime(newtime);
+
+	sprintf(aux,"Proceso AxionMain Iniciado:Pid=%d %s",ipid,auxch);
+	AxisLog(aux);						// Log
+	printf("\n %s \n",aux);
+	// signal(-,SIG_IGN);
+
+	numppp1=0;
+	flaghora=0;
+	flagFTP=1;		// al iniciar programa se realiza envio día en curso.
+
+	// lectura parametros envio FTP SAICA
+	if(i=ReadLogerBd(&BdConf)!=0){  	//Leer Objeto B.D  BDCONF
+		printf("\n\tReadLogerBd:Error=%d",i);
+		return(1);}
+
+	sprintf(aux,"AxionMain: Estacion:%s FrecuenciaEnvioFTP: %d",BdConf.remconf.name,BdConf.remconf.frecuencia);
+	AxisLog(aux);						// Log
+	printf("\n %s \n",aux);
+
+	// al iniciar si estamos más alla de 30 segundos del 10 minutal exacto marcamos para enviar FTP
+	// segjulqm=((segjulact/SEGPQM)*SEGPQM);
+	// if(ultimoEnvioFTP > (segjulqm+30) ) flagFTP=1;
+
+	for(;;){   
+
+
+		interval.tv_sec = TIEMPOESPERA; interval.tv_nsec = 0;              		// Timeout
+                if (nanosleep(&interval, &remainder) == -1) {
+                        if (errno == EINTR) {
+                                (void)printf("nanosleep interrupted\n");
+                                (void)printf("Remaining secs: %d\n", remainder.tv_sec);
+                                (void)printf("Remaining nsecs: %d\n", remainder.tv_nsec);}
+                        else perror("nanosleep");
+                }
+
+		if( (numppp1 > NUMPPPERR) ){
+			strcpy(name,"/sbin/reboot > /flash/idata/log/reboot.log");	// Reboot
+			segjulact=time(NULL);                                   	// Hora Actual
+			newtime=localtime(&segjulact);
+			auxch=asctime(newtime);
+			sprintf(aux,"Reiniciar Sistema %s",auxch);
+			AxisLog(aux);
+			system(name);
+		}
+
+		for(i=0;i<22;i++){
+			memset(bufppp[i],0,134);
+			//memset(bufping[i],0,134);
+			memset(bufpro[i],0,134);
+		}
+
+		memset(ch,0,133);
+
+		strcpy(path,("/flash/idata/log/gprs.log"));				// PATH gprs.log
+		if(!stat(path,&bufstat)){						// Borrar si > 20000 Byte
+			if(bufstat.st_size > (20000)){
+				strcpy(name,"cp /flash/idata/log/gprs.log /flash/idata/log/gprs.log.old");
+				system(name);
+				unlink(path);
+				strcpy(name,"touch /flash/idata/log/gprs.log");
+				system(name);
+				}
+		}
+
+		segjulact=time(NULL);                                   		// Hora Actual
+		newtime=localtime(&segjulact);
+		auxch=asctime(newtime);
+		printf("\n\tAxisMain:Kalimera...numppp1=%d %s",numppp1,auxch);
+
+		memset((char *)&gn,0,sizeof(GN));
+	        if( (i=ReadLogerGn(&gn)) !=0){
+	              printf("\n\tReadLogerGn:Error=%d",i);
+	              continue;
+	        }
+
+		if(gn.NumComLoger[0]!=0) 
+			EstComAxis=(gn.NumComLoger[1] * 100) / gn.NumComLoger[0];
+		else EstComAxis=50;
+		printf("\n\tEstComAxis=%d : %d %d \n\t Ultimo envio FTP: %ld (Historico %ld)",EstComAxis,gn.NumComLoger[0],gn.NumComLoger[1],ultimoEnvioFTP,gn.UltEnvFtp);
+		if(EstComAxis < 20 ){
+			printf("\n\tAxis:EstComAxis=%d",EstComAxis);
+			strcpy(name,"/flash/idata/bin/axisloger.sh");
+			system(name);
+		}
+
+		printf("\n\t-------------------------------------------------------------------------------------------");
+		strcpy(name,"chmod 666 /flash/idata/log/*.log");			// Permisos
+		system(name);
+		strcpy(name,"chmod 666 /flash/idata/*.dat");
+		system(name);
+
+		strcpy(name,"/bin/ps > /flash/idata/log/procesos.log");			// Procesos
+		system(name);
+		strcpy(path,"/flash/idata/log/procesos.log");
+		if((fhf=fopen(path,"r"))==NULL){
+			printf("\n\tAxionMain:No se puede abrir:%s",path);
+			}
+		i=0;
+		while(fgets(ch,130,fhf)){
+			strcpy(bufpro[i],ch);
+			printf("\n\tAxisMain:Procesos[%d]=%s",i,bufpro[i]);
+			i++;
+		}
+		fclose(fhf);
+
+		strcpy(name,"/bin/dmesg > /flash/idata/log/dmesg.log");			// Memoria
+		system(name);
+		strcpy(name,"/bin/free > /flash/idata/log/free.log");			// Memoria
+		system(name);
+		strcpy(name,"/bin/df > /flash/idata/log/df.log");			// Espacio
+		system(name);
+		printf("\n\t-------------------------------------------------------------------------------------------");
+
+
+		memset(pidppp1,0,7);
+		strcpy(path,"/var/run/ppp1.pid");				// ifconfig ppp1 Gprs
+		if((fhf=fopen(path,"r"))==NULL){
+			printf("\n\tAxionMain:No se puede abrir:%s",path);
+			strcpy(name,"/flash/idata/bin/gprs.sh");		// Iniciamos Gprs ppp1
+			system(name);
+			segjulact=time(NULL);                                   // Hora Actual
+			newtime=localtime(&segjulact);
+			auxch=asctime(newtime);
+			sprintf(aux,"Proceso Gprs pppd No UP: Iniciado: %s",auxch);
+			AxisLog(aux);
+			printf("\n %s \n",aux);
+			//TimeWait(50);
+			flaggprs=0;
+			numppp1++;
+			}
+		else{
+			while(fgets(pidppp1,7,fhf)){				// Pid Gprs
+				printf("\n\tAxionMain:PPP1 Pid = %s",pidppp1);
+			fclose(fhf);
+			flaggprs=1;						// Existe Pid ppp1
+			numppp1=0;						// Existe interface  ppp1
+			}
+		}
+
+		if(flaggprs == 1) gprs();
+
+		if(newtime->tm_hour != 3) flaghora=1;
+		if( (newtime->tm_hour == 3) && (flaghora == 1) ){ 		// Hora == 03 reiniciar interface ppp1 Gprs
+//			printf("\n\tAxionMain: Gprs No Interface ppp1: Inicia ppp1");
+//			strcpy(name,"/bin/kill -1 ");
+//			strcat(name,pidppp1);
+//			system(name);
+//			TimeWait(90);
+//			strcpy(name,"/flash/idata/bin/gprs.sh");					// Iniciar Gprs ppp1
+//			system(name);
+//			segjulact=time(NULL);
+//			newtime=localtime(&segjulact);
+//			auxch=asctime(newtime);
+//			sprintf(aux,"Proceso Gprs pppd No UP: Iniciado: %s",auxch);
+//			AxisLog(aux);
+//			TimeWait(50);
+//			flaghora=0;
+			strcpy(name,"/sbin/reboot > /flash/idata/log/reboot.log");	// Reboot
+			segjulact=time(NULL);                                   	// Hora Actual
+			newtime=localtime(&segjulact);
+			auxch=asctime(newtime);
+			sprintf(aux,"Reiniciar Sistema %s",auxch);
+			AxisLog(aux);
+			printf("\n %s \n",aux);
+			system(name);
+		}
+
+		// si ha pasado frecuencia minutos desde ultimo envio y estamos 30 sg adelante del 10 min exacto mandamos FTP
+		segjulqm=((segjulact/SEGPQM)*SEGPQM);
+		if( (ultimoEnvioFTP + BdConf.remconf.frecuencia*60 ) < (segjulqm+30) ) flagFTP=1;
+
+		if (flagFTP==1) EnvioFTP(segjulqm);
+		else EnvioFTPHist(segjulqm);	// Enviar Historicos si es necesario cuando no se manda el actual
+
+		printf("\n\t-------------------------------------------------------------------------------------------");
+	}
+	exit(0);
+}
+
+int GenerarFichero(unsigned long segjul){
+	newtime=localtime(&segjul);
+	strcpy(aux,"");
+	strcpy(name,"");
+	printf("\n Inicio Envio FTP: %04d-%02d-%02d %02d:%02d (Ultimo Envio: %ld JulianoActual: %ld [%ld])\n",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday,newtime->tm_hour,newtime->tm_min,ultimoEnvioFTP,segjulact, segjulact-ultimoEnvioFTP);
+	sprintf(aux,"%04d%02d%02d.dat",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday);
+	strcpy(name,"/flash/idata/bin/leerlogerbd F > /flash/idata/dat/");
+	strcat(name,aux);
+	printf("\n %s \n",name);
+	system(name);
+
+	strcpy(path,("/flash/idata/dat/"));				// PATH fichero datos
+	strcat(path,aux);
+	if(!stat(path,&bufstat)){						// si es menor que 50 bytes (caracteres ASCII) hay error
+		if(bufstat.st_size < 50){
+			auxch=asctime(newtime);
+			sprintf(aux,"%s Error en GenerarFichero FTP.",auxch);
+			AxisLog(aux);
+			AxisLog(name);
+			return -1;
+			}
+	}
+
+	// borramos ficheros dat antiguos
+	strcpy(name,"/flash/idata/bin/borrarDat.sh >> /flash/idata/log/axis.log");
+	system(name);
+
+	auxch=asctime(newtime);
+	sprintf(aux,"GenerarFichero OK %s",auxch);
+	AxisLog(aux);
+
+	return 0;
+}
+
+int GenerarFicheroHist(unsigned long segjul){
+	newtime=localtime(&segjul);
+	strcpy(aux,"");
+	strcpy(name,"");
+	printf("\n GenerarFicheroHist %04d-%02d-%02d %02d:%02d (Ultimo Envio: %ld JulianoActual: %ld [%ld])\n",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday,newtime->tm_hour,newtime->tm_min,ultimoEnvioFTP,segjulact, segjulact-ultimoEnvioFTP);
+	sprintf(aux,"%04d%02d%02d.dat",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday);
+	sprintf(name,"/flash/idata/bin/leerlogerbd FH %ld ",segjul);
+	strcat(name," > /flash/idata/dat/");
+	strcat(name,aux);
+	printf("\n %s \n",name);
+	system(name);
+
+	strcpy(path,("/flash/idata/dat/"));				// PATH fichero datos
+	strcat(path,aux);
+	if(!stat(path,&bufstat)){						// si es menor que 50 bytes (caracteres ASCII) hay error
+		if(bufstat.st_size < 50){
+			auxch=asctime(newtime);
+			sprintf(aux,"%s Error en GenerarFichero FTP.",auxch);
+			AxisLog(aux);
+			AxisLog(name);
+			return -1;
+			}
+	}
+
+	// borramos ficheros dat antiguos
+	strcpy(name,"/flash/idata/bin/borrarDat.sh >> /flash/idata/log/axis.log");
+	system(name);
+
+	auxch=asctime(newtime);
+	sprintf(aux,"GenerarFicheroHist OK %s",auxch);
+	AxisLog(aux);
+
+	return 0;
+}
+
+int EnviarFichero(unsigned long segjul){
+	newtime=localtime(&segjul);
+	// Envio FTP comando ejemplo:
+	//sftpclient -p 10.253.3.11 -c SIMAM/URDIAIN/ -l urdiain20091028.dat -u SCADA -w SCADA -k /flash/idata/dat/
+	strcpy(aux,"");
+	strcpy(name,"");
+	sprintf(aux,"%04d%02d%02d.dat",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday);
+	sprintf(name,"/flash/idata/bin/sftpclient -p %s -c SIMAM/%s/ -l %s -u %s -w %s -k /flash/idata/dat/ ",BdConf.remconf.ipnameFTP,BdConf.remconf.directorio,aux,BdConf.remconf.usuario,BdConf.remconf.contrasenia);
+	sprintf(aux,"-T %d -I %d %s ",TIMEOUTFTP,TIMELOGOUTFTP,PASIVO);
+	strcat(name,aux);
+	strcpy(aux,"2> /flash/idata/log/envioFTP.log");
+	strcat(name,aux);
+	printf("\n %s \n",name);
+	if (debug==1) return 0;
+	system(name);
+
+
+	strcpy(path,("/flash/idata/log/envioFTP.log"));				// PATH envioFTP.log
+	if(!stat(path,&bufstat)){						// si es mayor que cero hay error volvemos a intentarlo en 5 minutos
+		if(bufstat.st_size > 0){
+			auxch=asctime(newtime);
+			sprintf(aux,"%s Error en envio FTP.",auxch);
+			AxisLog(aux);
+			AxisLog(name);
+			strcpy(name,"cat /flash/idata/log/envioFTP.log >> /flash/idata/log/axis.log");
+			system(name);
+			return -1;
+			}
+	}
+
+	auxch=asctime(newtime);
+	sprintf(aux,"EnviarFichero OK %s ",auxch);
+	AxisLog(aux);
+
+	return 0;
+}
+
+
+void EnvioFTP(unsigned long segjul)
+{
+
+	if(GenerarFichero(segjul)<0)	return;
+	TimeWait(100);
+	if(EnviarFichero(segjul)<0)	return;
+
+	// llegamos hasta aqui, todo correcto con envio actual entonces
+	flagFTP=0;
+	ultimoEnvioFTP=segjul;
+
+
+
+
+
+
+	//printf("\n Fin Envio FTP: %04d-%02d-%02d %02d:%02d (Ultimo Envio: %ld JulianoActual: %ld)\n",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday,newtime->tm_hour,newtime->tm_min,ultimoEnvioFTP,segjulact);
+}
+
+// se llama a envio historico con la fecha actual.
+// si lo almacenado en gn.UltEnvFtp es anterior al dia actual se envia el dia correspondiente
+// en bloques de NUMDIASREC en NUMDIASREC dias.
+// Se almacena gn.UltEnvFtp con la fecha del mediodia del dia correspondiente.
+void EnvioFTPHist(unsigned long segjul){
+	int numhistqm,dia,i;
+	// Envio Historico hasta 30 dias
+	newtime=localtime(&segjul);
+	numhistqm=(newtime->tm_hour)*60*60 + (newtime->tm_min)*60 + (newtime->tm_sec);	// segundos desde hora 00:00 hasta segjul
+
+	memset((char *)&gn,0,sizeof(GN));
+        if( (i=ReadLogerGn(&gn)) !=0)
+              printf("\n\tReadLogerGn:Error=%d",i);
+
+	// si no hay valor inicial lo fijamos en el mediodia de NUMDIASREC dias atras
+	if(gn.UltEnvFtp==0) gn.UltEnvFtp=segjul - numhistqm - NUMDIASREC*SEGPDIA + SEGPDIA/2;
+
+	for (dia=0; dia < NUMDIASREC; dia++){
+		if(gn.UltEnvFtp < (segjul - numhistqm + SEGPDIA/2) ){
+			if(GenerarFicheroHist(gn.UltEnvFtp)<0)	return;
+			TimeWait(100);
+			if(EnviarFichero(gn.UltEnvFtp)<0)	return;
+			gn.UltEnvFtp=gn.UltEnvFtp+SEGPDIA;
+			if( (i=WriteLogerGn(gn)) !=0){
+				printf("\n\tWriteLogerGn:Error=%d",i);
+				return;
+			}
+		}else{
+/****************************************************
+Version 1.2 (10/02/2010) se fuerza el envio del ultimo dia completo en el primer envio 
+despés demedianoche.
+
+			gn.UltEnvFtp=segjul - numhistqm + SEGPDIA/2;
+			if( (i=WriteLogerGn(gn)) !=0){
+				printf("\n\tWriteLogerGn:Error=%d",i);
+				return;
+			}
+Fin
+***************************************************/
+			printf("\n\tNo hay ficheros historicos para enviar (gn.UltEnvFtp: %ld segjul:%ld)",gn.UltEnvFtp,segjul);
+			break;
+		}
+	}
+	return;
+}
+//------------------------------------------------------------------------------------------------------------------------
+//
+//Gprs PPP1
+gprs()
+{
+	int i,x;
+	char up[134],ipgprs[134],inetaddr[134];
+	int linea,ipt[4];
+
+	strcpy(name,"/sbin/ifconfig ppp1 > /flash/idata/log/ppp1");	// Gprs ppp1
+	system(name);
+
+	memset(ch,0,133);
+	memset(buffer,0,134);
+	memset(Tx,0,134);
+	memset(Rx,0,134);
+	memset(Lx,0,134);
+
+	strcpy(path,"/flash/idata/log/ppp1");				// ifconfig ppp1
+	if((fhf=fopen(path,"r"))==NULL){
+		printf("\n\tAxionMain:No se puede abrir:%s",path);
+		return(-1);}
+	i=0;
+	while(fgets(ch,130,fhf)){
+		memset(bufppp[i],0,134);
+		strcpy(bufppp[i],ch);
+		printf("\n\tAxion:Buffer PPP[%d]=%s",i,bufppp[i]);
+		i++;
+	}
+	fclose(fhf);
+
+	ipt[0]=ipt[1]=ipt[2]=ipt[3]=0;
+	//printf("\n\tbufppp1: %c %c %c",bufppp[0][0],bufppp[0][1],bufppp[0][3]);
+
+	if( (bufppp[0][0]=='p') && (bufppp[0][1]=='p') && (bufppp[0][3]=='1') ){		// ifconfig ppp1 Existe
+		sprintf(inetaddr,"%4.4s",bufppp[1]+10);
+		if(i=sscanf(bufppp[1]+10+10,"%d%*c%d%*c%d%*c%d",&ipt[0],&ipt[1],&ipt[2],&ipt[3])>7) 
+			return(1);
+		sprintf(ipgprs,"%8.8s",bufppp[1]+10+10);
+		sprintf(up,"%2.2s",bufppp[2]+10);
+		printf("\n\tAxion:IP GPRS = %s : %d.%d.%d.%d\n",up,ipt[0],ipt[1],ipt[2],ipt[3]);
+		// almacenamos direccion IP en GN
+	        if( (i=ReadLogerGn(&gn)) !=0)
+        	      printf("\n\tReadLogerGn:Error=%d",i);
+		for (i=0;i<4;i++) gn.iaux[0][i]=(long)ipt[i];
+                if( (i=WriteLogerGn(gn)) !=0)
+                          printf("\n\tWriteLogerGn:Error=%d",i);
+
+		if( (strncmp(up,"UP",2)) ){							// ppp1 DOWN
+			strcpy(name,"/bin/kill -1 ");
+			strcat(name,pidppp1);
+			system(name);
+			printf("\n\tAxionMain:Interface ppp1 No UP: Inicia ppp1:name=%s",name);
+			TimeWait(90);	
+			strcpy(name,"/flash/idata/bin/gprs.sh");				// Inciar Gprs ppp1
+			system(name);
+			segjulact=time(NULL);                                  
+			newtime=localtime(&segjulact);
+			auxch=asctime(newtime);
+			sprintf(aux,"Proceso Gprs pppd No UP: Iniciado: %s",auxch);
+			AxisLog(aux);
+			TimeWait(50);	
+			return(0);
+		}
+	}
+	else{											// ifconfig ppp1 No Existe
+		printf("\n\tAxionMain: Gprs No Interface ppp1: Inicia ppp1");
+		strcpy(name,"/bin/kill -1 ");
+		strcat(name,pidppp1);
+		system(name);
+		TimeWait(90);	
+		strcpy(name,"/flash/idata/bin/gprs.sh");					// Iniciar Gprs ppp1
+		system(name);
+		segjulact=time(NULL);                                  
+		newtime=localtime(&segjulact);
+		auxch=asctime(newtime);
+		sprintf(aux,"Proceso Gprs pppd No UP: Iniciado: %s",auxch);
+		AxisLog(aux);
+		TimeWait(50);	
+		return(0);
+	}
+
+// De momento no se realiza comprobacion ping
+/*
+
+        if(i=ReadLogerBd(&BdConf)!=0){  	//Leer Objeto B.D  BDCONF 
+                printf("\n\tReadLogerBd:Error=%d",i);
+		return(-1);}
+
+
+	printf("\n\t-------------------------------------------------------------------------------------------");
+	//strcpy(name,"/bin/ping -c 9 194.224.66.107 > /flash/idata/log/pnggprs.log");
+	sprintf(name,"/bin/ping -c 9 %s > /flash/idata/log/pnggprs.log",BdConf.remconf.ipnameFTP);
+	system(name);									// Existe ppp1, Comprobar Red 
+	TimeWait(90);									// Comprobar rutas netstat -rn	
+
+	strcpy(path,"/flash/idata/log/pnggprs.log");					// ICMP
+	if((fhf=fopen(path,"r"))==NULL){
+		printf("\n\tAxis:No se puede abrir:%s",path);
+		return(-1);}
+	i=0;
+	memset(ch,0,133);
+	while(fgets(ch,130,fhf)){
+		memset(bufping[i],0,134);
+		strcpy(bufping[i],ch);
+		printf("\n\tAxis:Buffer Png[%d]=%s",i,bufping[i]);
+		i++;}
+	fclose(fhf);
+	//unlink(path);
+
+	if(!strncmp(bufping[i-1],"9",1)){
+		linea=i-1;}
+	else if(!strncmp(bufping[i-1],"round",5)){
+		linea=i-2;}
+	else{
+		printf("\n\tAxionMain:Png No contemplado");
+		strcpy(name,"/flash/idata/bin/rutas.sh");		// Inciar Tetra ppp0
+		system(name);
+		return(0);}
+	
+	PacketesTx=PacketesRx=0;
+	printf("\n\tAxionMain:Buffer Png TX = %s ",bufping[linea]);
+	strcpy(buffer,bufping[linea]);
+
+	printf("\n\tAxionMain:Buffer Png TX = %s",buffer);
+	printf("\n\tAxionMain:Buffer Png Rx = %s",buffer+23);
+	printf("\n\tAxionMain:Buffer Png Lx = %s",buffer+43);
+
+	strcpy(Tx,buffer);								// Numero Tx
+	strcpy(Rx,buffer+23);								// Numero Rx
+	strcpy(Lx,buffer+43);								// Numero Lx
+
+	sscanf(Tx,"%01d",&PacketesTx);
+	sscanf(Rx,"%01d",&PacketesRx);
+	sscanf(Lx,"%03d",&PacketesLx);
+
+	printf("\n\tAxion - Gprs : PacketesTx=%d PacketesRx=%d PacketesLx=%d\n",PacketesTx,PacketesRx,PacketesLx);
+
+	if( (PacketesTx < 0) || (PacketesTx >10) || (PacketesRx < 0) || (PacketesRx >10) )
+		return(-1);
+	if(PacketesRx < 3){								// Num Paquetes Recibidos < 3
+		strcpy(name,"/bin/kill -1 ");
+		strcat(name,pidppp1);
+		system(name);
+		printf("\n\tAxion:Png packetes Rx < 3 : Inicia Gprs");
+		TimeWait(90);	
+		strcpy(name,"/flash/idata/bin/gprs.sh");				// Inciar Gprs ppp1
+		system(name);
+		TimeWait(50);	
+		segjulact=time(NULL);                                   		// Hora Actual
+		newtime=localtime(&segjulact);
+		auxch=asctime(newtime);
+		sprintf(aux,"Interface ppp1:Png Rx<3: Iniciado Gprs: %s",auxch);
+		AxisLog(aux);								// Log
+	}
+*/
+
+}

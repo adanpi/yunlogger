@@ -1,0 +1,592 @@
+/*
+*	Prometeo
+*	File:		TestSacBD.c
+*	Autor:		M.Bibudis
+*	Fecha:		01/02/200
+*	Revision:	1.0
+*	Producto:	Axis ine Axion
+*	Objetivo:	Kosmos...
+*	Customer:	SAIH
+*	Version 1.1 (13/06/2011) corrige transmision datos irrecuperables a fichero pdw
+*	Version 1.2 (19/09/2011) visualizar tablas datos con cabecera fija
+*/
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <memory.h>
+#include <time.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include <netdb.h>
+#include "logersaihbd.h"
+//extern int h_errno;
+FILE *fh;
+FILE *fh2;
+
+BDCONF BdConf;
+QM qm;
+IN in;
+GN gn;
+QM QmHis[NUMHISTQM];
+int ReadLogerBd();
+static char *version = "1.2 (19/09/2011)";
+
+
+main(argc,argv)
+char *argv[];
+int argc;
+{
+	short i,j,ihw,sen,status;
+	short numhistqm,intervalo;
+	unsigned short valor,valorMax=0,valorMin=0;
+	long segjulqm,segjulqmIni,segjulqmFin;
+	struct tm *newtime;
+	char *auxch,fecha[15];
+	int ndia,nmes,nano,h,m,s;
+	char path[80];
+
+	i=j=ihw=sen=status=segjulqm=0;
+        if ( (argc==2) && (argv[1][1]=='v')){
+                printf("\n************************************");
+                printf("\n\t IData Sistemas de Control S.L.");
+                printf("\n\t leerlogerbd Version: %s",version);
+                printf("\n************************************\n");
+                return(0);
+        }
+
+	if (argc==2){
+		if((argv[1][0]!='R') && (argv[1][0]!='C') && (argv[1][0]!='U') && (argv[1][0]!='L') && (argv[1][0]!='T') && (argv[1][0]!='F') && (argv[1][0]!='S') ){
+			printf("\n\tSAIHBD Parametros: leersacbd BD | C\n");
+			exit(0);}
+	}
+	else if (argc==3 && argv[1][0]=='F' && argv[1][1]=='H'){
+		if(sscanf(argv[2],"%ld",&segjulqm)!=1){
+			printf("\n\tSAIHBD Parametros: leerlogerbd FH SegJulQm\n");
+			exit(0);}
+		if( segjulqm < time(NULL) - (NUMHISTQM*SEGPQM)){
+			printf("\n\tSAIHBD Fecha fuera de historico\n");
+			exit(0);}
+	}
+	else if (argc==3 && argv[1][0]=='D'){
+		if(sscanf(argv[2],"%hd",&numhistqm)!=1){
+			printf("\n\tSAIHBD Parametros: leeraxisbd D NumDias\n");
+			exit(0);}
+		if( (numhistqm >31) &&(numhistqm<1) ){
+			printf("\n\tNumero dias entre 1 y 31\n");
+			exit(0);}
+	}
+	else if (argc==3 && argv[1][0]=='Q'){
+		if(sscanf(argv[2],"%ld",&segjulqm)!=1){
+			printf("\n\tSAIHBD Parametros: leerlogerbd QM SegJulQm\n");
+			exit(0);}
+		if( (argv[1][0]!='Q') || segjulqm < time(NULL) - (NUMHISTQM*SEGPQM)){
+			printf("\n\tSAIHBD Parametros: testsacbd QM SegJulQm\n");
+			exit(0);}
+	}
+	else if(argc ==4 && argv[1][0]=='Q'){
+		ndia=nmes=nano=0;
+                if ((sscanf (argv[2],"%02d%*c%02d%*c%04d",&ndia,&nmes,&nano) > 5) || (ndia < 1) || (ndia >31)
+                        || (nmes < 1) || (nmes > 12) || (nano < 1900) || (nano > 2050)){
+                        printf("\n\tError_2 Parametros seg || DD-MM-AA HH:MM:SS\n");
+                        return(-1);}
+                h=m=s=0;
+                if ((sscanf(argv[3],"%2d:%2d:%2d",&h,&m,&s) > 3) || (h < 0) || (h > 23) ||
+                        (m < 0) || (m > 59) || (s < 0) || (s > 59)){
+                        printf("\n\tError_3 Parametros seg || DD-MM-AA HH:MM:SS\n");
+                        return(-1);}
+		segjulqm=time(NULL);
+                newtime=localtime(&segjulqm);
+                newtime->tm_year=nano-1900; newtime->tm_mon=nmes-1;
+                newtime->tm_mday=ndia; newtime->tm_hour=h; newtime->tm_min=m;newtime->tm_sec=s;
+                segjulqm=mktime(newtime);
+		//printf("\n%hd\n",segjulqm);
+		if( segjulqm < (time(NULL) - (NUMHISTQM*SEGPQM)) ){
+			//printf("\n\tSAIHBD Parametros: leerlogerbd QM DD/MM/AAAA hh:mm \n");
+			printf("\n\tFecha QM Anterior a 1 mes\n");
+			exit(0);}
+	}
+	else if(argc ==4 && argv[1][0]=='H'){
+		if(sscanf(argv[3],"%d",&sen)!=1){
+			printf("\n\tSAIHBD Parametros: leerlogerbd HQM A || G || R || C NumSen\n");
+			exit(0);}
+		if( argv[1][0]!='H' || (argv[2][0]!='A' && argv[2][0]!='G' && argv[2][0]!='R' && argv[2][0]!='C') ){
+			printf("\n\tSAIHBD Parametros: testsacbd HQM A || G || R || C NumSen\n");
+			exit(0);}
+		if( (argv[2][0]=='A' && (sen<1 || sen >16)) || (argv[2][0]=='G' && (sen<1 || sen>28)) || 
+		(argv[2][0]=='R' && (sen<1 || sen >28)) || (argv[2][0]=='C' && (sen<1 || sen>4)) ){
+			printf("\n\tSAIHBD Parametros: testsacbd HQM A || G || R || C NumSen\n");
+			exit(0);}
+	}
+	else if(argc ==7 && argv[1][0]=='I'){
+		//parsear fecha inicial
+		ndia=nmes=nano=0;
+		if ((sscanf (argv[2],"%02d%*c%02d%*c%04d",&ndia,&nmes,&nano) > 5) || (ndia < 1) || (ndia >31)
+				|| (nmes < 1) || (nmes > 12) || (nano < 0) ){
+			printf("\n\tError_2 Parametros seg || DD-MM-AA HH:MM:SS\n");
+			return(-1);}
+		h=m=s=0;
+		if ((sscanf(argv[3],"%2d:%2d:%2d",&h,&m,&s) > 3) || (h < 0) || (h > 23) ||
+				(m < 0) || (m > 59) || (s < 0) || (s > 59)){
+			printf("\n\tError_3 Parametros seg || DD-MM-AA HH:MM:SS\n");
+			return(-1);}
+		segjulqm=time(NULL);
+		newtime=localtime(&segjulqm);
+		newtime->tm_year=nano-1900; newtime->tm_mon=nmes-1;
+		newtime->tm_mday=ndia; newtime->tm_hour=h; newtime->tm_min=m;newtime->tm_sec=s;
+		segjulqmIni=mktime(newtime);
+		if( segjulqm < time(NULL) - (NUMHISTQM*SEGPQM)){
+			printf("\n\tSAIHBD Parametros: testsacbd QM SegJulQm\n");
+			exit(0);}
+		//parsear intervalo
+		if(sscanf(argv[4],"%d",&intervalo)!=1){
+			printf("\n\tError parseando intervalo\n");
+			exit(0);}
+		segjulqmFin=segjulqmIni+intervalo*60*60;
+
+		//parsear numero de señal
+		if(sscanf(argv[6],"%d",&sen)!=1){
+			printf("\n\tError parseando numero senial\n");
+			exit(0);}
+
+	}
+	else{
+		printf("\n\tleerlogerbd Parametros: testsacbd HQM A || G || R || C NumSen\n");
+		exit(0);}
+
+	memset((char *)&BdConf,0,sizeof(BdConf));
+	memset((char *)&qm,0,sizeof(QM));
+	memset((char *)&in,0,sizeof(IN));
+
+	qm.SegJul=segjulqm;					// SegJulQm Solicitado
+
+	switch(argv[1][0]){
+
+	    case 'C':
+		memset((char *)&gn,0,sizeof(GN));
+		if( (char *)getenv("SAIHBD") ==NULL){
+			fprintf(stderr,"\n\tReadLogerGN:Variable Entorno SAIHBD NO SET");
+			return(-1);}
+		strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+		if((fh=fopen(path,"rb"))==NULL){
+			fprintf(stderr,"\nReadLogerGN:No se puede abrir:%s",path);
+			return(-1);}
+		if(!fread(&gn,sizeof(GN),1,fh)){
+			fprintf(stderr,"\nReadLogerGN:Error_En_read:%s Errn=%d",path,errno);
+			fclose(fh);
+			return(-1);}
+		//gn.NumComLoger[0]=1000;
+		//gn.NumComLoger[1]=900;
+		printf("\n\t\tNumComLoger Totales: %lu",gn.NumComLoger[0]);
+		printf("\n\t\tNumComLoger Buenas : %lu",gn.NumComLoger[1]);
+		if (gn.NumComLoger[0] !=0){
+			int iEst=100*gn.NumComLoger[1]/gn.NumComLoger[0];
+			printf("\n\t\tEstadistica Comunicaciones : %d %",iEst);
+		} else {printf("\n\t\tError Estadistica Comunicaciones : Comunicaciones totales = cero");}
+	    break;
+	    case 'R':
+		memset((char *)&gn,0,sizeof(GN));
+		if( (char *)getenv("SAIHBD") ==NULL){
+			fprintf(stderr,"\n\tReadLogerGN:Variable Entorno SAIHBD NO SET");
+			return(-1);}
+		strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+		if((fh=fopen(path,"r+b"))==NULL){
+			fprintf(stderr,"\nReadLogerGN:No se puede abrir:%s",path);
+			return(-1);}
+		if(!fread(&gn,sizeof(GN),1,fh)){
+			fprintf(stderr,"\nReadLogeGN:Error_En_read:%s Errn=%d",path,errno);
+			fclose(fh);
+			return(-1);}
+		printf("\n\t\tNumComLoger Totales Antes: %lu",gn.NumComLoger[0]);
+		printf("\n\t\tNumComLoger Buenas Antes: %lu",gn.NumComLoger[1]);
+		gn.NumComLoger[0]=0;
+		gn.NumComLoger[1]=0;
+		printf("\n\t\tNumComLoger Totales: %lu",gn.NumComLoger[0]);
+		printf("\n\t\tNumComLoger Buenas : %lu",gn.NumComLoger[1]);
+		if((fseek(fh,0L,SEEK_SET))==-1){
+			fprintf(stderr,"\n\tFseekSacGn:Error:%s errno=%d",path,errno);
+			fclose(fh);
+			return(-1);}
+		if(!fwrite(&gn,sizeof(GN),1,fh)){
+			fprintf(stderr,"\nWriteSacGn:No se puede crear:%s Errno=%d",path,errno);
+			fclose(fh);
+			return(-1);}
+		if(fclose(fh)!=0) fprintf(stderr,"\n\tWriteSacGN:Error en fclose:%d ",errno);
+	    break;
+
+	    case 'Q':
+
+		if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF 
+			printf("\n\tReadLogerBd:Error=%d ERROR EN LECTURA LOGERBD\n",i);
+			exit(1);}
+
+		memset((char *)&qm,0,sizeof(QM));
+		if( (i=ReadLogerQm(segjulqm,&qm)) != 0 ){			// Leemos QM
+			printf("\n\tReadLogerQm:Error=%d QM NO EXISTE\n\n",i);
+			exit(1);
+		}
+
+		if( qm.SegJul < (time(NULL) - (NUMHISTQM * SEGPQM)) ){
+			printf("\n\tReadLogerQm:Error de Fechas =%ld \n",qm.SegJul);
+			exit(1);
+		}
+
+		if(argv[1][1] == 'B'){
+		printf("\n\tBufferQm : %hd \n",qm.lBufferQm);
+			for(i=0;i<qm.lBufferQm;i++)
+			printf("%02x ",qm.BufferQm[i]);
+
+		}else{
+
+
+			qm.SegJul=qm.SegJul+SEGPQM;	//presentamos fecha cierre QM
+			newtime=localtime(&qm.SegJul);
+			sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900,
+					newtime->tm_hour,newtime->tm_min);
+
+			printf("\n\t<TABLE class=\"datos\"><tr class=\"cabecera\"><td colspan=\"2\"><b>%4s - %s</b></td></tr>",BdConf.remconf.name,BdConf.remconf.desc);
+			printf("\n\t<tr class=\"cabecera\"><td>Fecha Cierre Dato</td><td> %s </td></tr><tr class=\"cabecera\"><td>Status</td><td>%hd</td></tr>",fecha,qm.Status);
+			printf("</TABLE>\n<BR>");
+
+			// Tabla QM
+			printf("<a href=\"#nowhere\" onclick=\"Switch('tablaQM'),Desplegar('aQM')\" style=\"text-align: left; \"><div id=\"aQM\">[-] Tabla Datos</div></a>");
+			printf("\n<div id=\"tablaQM\">");
+			printf("\n<table class=\"datos\">");
+			printf("\n<tr class=\"cabecera\"><td WIDTH=\"125px\" align=\"center\"><b>ANALOGICA</b></td><td WIDTH=\"275px\" align=\"center\"><b>Descripcion</b></td><td WIDTH=\"75px\" align=\"center\"><b>Valor</b></td><td WIDTH=\"50px\" align=\"center\"><b>Unidades</b></td></tr>");
+			for(i=0;i<qm.NumAna;i++){
+				printf("\n\t<tr class=\"dato\"><td>%-12s</td><td>%-30s</td><td align=\"center\"><font color=\"#3300CC\">%6.2f</font></td><td align=\"center\">%-7s</td></tr>",BdConf.anaconf.tag[i],BdConf.anaconf.desc[i],qm.FlValorAna[i],BdConf.anaconf.uni[i]);
+			}
+			printf("\n</table></div>");
+		}
+
+	    break;
+	    case 'H':
+		if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF 
+			printf("\n\tReadLogerBd:Error=%d",i);
+			exit(1);}
+
+		sen=sen - 1;
+		memset((char *)&QmHis,0,sizeof(QmHis));
+		if( i=ReadLogerQmHis(&QmHis) != 0 ){				// Leemos Historicos QM
+			printf("\n\tReadLogerQm:Error=%d",i);
+			exit(1);}
+		for(i=0;i<NUMHISTQM;i++){
+			if(QmHis[i].SegJul < time(NULL) - (NUMHISTQM * SEGPQM)) continue;
+			newtime=localtime(&QmHis[i].SegJul);
+			sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year-100,
+			newtime->tm_hour,newtime->tm_min);	
+			switch(argv[2][0]){
+				case 'A':
+					printf("\n\tFecha=%s SegJulQm=%ld  SegJulPer=%ld  StatusQm=%hd \t ValorQm[%hd]=%hd",
+					fecha,QmHis[i].SegJul,QmHis[i].SegJulPer,QmHis[i].Status,i,QmHis[i].ValorAna[sen]);
+				break;
+				case 'G':
+					printf("\n\tFecha=%s SegJulQm=%ld  SegJulPer=%ld  StatusQm=%hd \t ValorQm[%hd]=%hd",
+					fecha,QmHis[i].SegJul,QmHis[i].SegJulPer,QmHis[i].Status,i,QmHis[i].ValorGray[sen]);
+				break;
+				case 'R':
+					printf("\n\tFecha=%s SegJulQm=%ld  SegJulPer=%ld  StatusQm=%hd \t ValorQm[%hd]=%hd",
+					fecha,QmHis[i].SegJul,QmHis[i].SegJulPer,QmHis[i].Status,i,QmHis[i].ValorRs[sen]);
+				break;
+				case 'C':
+					printf("\n\t Fecha=%s SegJulQm=%ld  SegJulPer=%ld  StatusQm=%hd SegJulCincom:[",
+					fecha,QmHis[i].SegJul,QmHis[i].SegJulPer,QmHis[i].Status);
+					for(j=0;j<3;j++)
+						printf("%ld ",QmHis[i].SegJulCinc[j]);
+						printf("] ValCincom:[");
+					if(sen==0){
+						for(j=0;j<3;j++) printf("%hd ",QmHis[i].ValorCont[j]);
+						printf("]");}
+					else if(sen==1){
+						for(j=3;j<6;j++) printf("%hd ",QmHis[i].ValorCont[j]);
+						printf("]");}
+					else if(sen==2){
+						for(j=6;j<9;j++) printf("%hd ",QmHis[i].ValorCont[j]);
+						printf("]");}
+					else if(sen==3){
+						for(j=9;j<12;j++) printf("%hd ",QmHis[i].ValorCont[j]);
+						printf("]");}
+				break;
+				default:
+					printf("\n\tSAIHBD Parametros: testsacbd BD || QM ||HQM || IN \n");
+				break;
+			}
+
+		}
+		break;
+		case 'L':	// ultimo dato recibido en formato tabla html
+			memset((char *)&gn,0,sizeof(GN));
+			if( (char *)getenv("SAIHBD") ==NULL){
+				fprintf(stderr,"\n\tReadAxisGN:Variable Entorno SAIHBD NO SET");
+				return(-1);}
+			strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+			if((fh=fopen(path,"r+b"))==NULL){
+				fprintf(stderr,"\nReadAxisGN:No se puede abrir:%s",path);
+				return(-1);}
+			if(!fread(&gn,sizeof(GN),1,fh)){
+				fprintf(stderr,"\nReadAxisGN:Error_En_read:%s Errn=%d",path,errno);
+				fclose(fh);
+				return(-1);}
+			//printf("\n\t\t<b>Ultimo Juliano Recibido: %d</b>\n",gn.segjulhis);
+			if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF
+				printf("\n\tReadAxisBd:Error=%d",i);
+				exit(1);}
+
+			memset((char *)&qm,0,sizeof(QM));
+			if( i=ReadLogerQm((gn.segjulhis),&qm) != 0 ){			// Leemos QM
+				printf("\n\tReadAxisQm:Error=%d",i);
+				exit(1);
+			}
+
+			if(qm.SegJul < time(NULL) - (NUMHISTQM * SEGPQM)){
+				printf("\n\tReadAxisQm:Error de Fechas =%ld",qm.SegJul);
+				exit(1);
+			}
+
+
+			fflush(stdout);
+			qm.SegJul=qm.SegJul+SEGPQM;	//presentamos fecha cierre QM
+			newtime=localtime(&qm.SegJul);
+			sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900,
+					newtime->tm_hour,newtime->tm_min);
+
+			printf("\n\t<TABLE class=\"datos\"><tr class=\"cabecera\"><td colspan=\"2\"><b>%4s - %s</b></td></tr>",BdConf.remconf.name,BdConf.remconf.desc);
+			printf("\n\t<tr class=\"cabecera\"><td>Fecha Cierre Dato</td><td> %s </td></tr><tr class=\"cabecera\"><td>Indice Loger</td><td>%hd</td></tr>",fecha,gn.IndActAna);
+			printf("</TABLE>\n<BR>");
+
+			// Tabla QM
+			printf("<a href=\"#nowhere\" onclick=\"Switch('tablaQM'),Desplegar('aQM')\" style=\"text-align: left; \"><div id=\"aQM\">[-] Tabla Datos</div></a>");
+			printf("\n<div id=\"tablaQM\">");
+			printf("\n<table class=\"datos\">");
+			printf("\n<tr class=\"cabecera\"><td WIDTH=\"125px\" align=\"center\"><b>ANALOGICA</b></td><td WIDTH=\"275px\" align=\"center\"><b>Descripcion</b></td><td WIDTH=\"75px\" align=\"center\"><b>Valor</b></td><td WIDTH=\"50px\" align=\"center\"><b>Flag</b></td><td WIDTH=\"30px\" align=\"center\"><b>Unidades</b></td></tr>");
+			for(i=0;i<qm.NumAna;i++){
+				printf("\n\t<tr class=\"dato\"><td>%-12s</td><td>%-30s</td><td align=\"center\"><font color=\"#3300CC\">%6.2f</font></td><td align=\"center\">%01c</td><td align=\"center\">%-7s</td></tr>",BdConf.anaconf.tag[i],BdConf.anaconf.desc[i],qm.FlValorAna[i],qm.Flag[i],BdConf.anaconf.uni[i]);
+			}
+			printf("\n</table></div>");
+
+			break;	
+		case 'T':
+			if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF
+				printf("\n\tReadAxisBd:Error=%d",i);
+				exit(1);}
+			printf("<select name=\"num\">");
+			for(i=0;i<NUMSENANASAICA;i++){
+				if(BdConf.anaconf.tag[i]!=NULL)
+	                                 printf("<option value=\"%d\">%s - %s</option>",i+1,BdConf.anaconf.tag[i],BdConf.anaconf.desc[i]);       
+			}
+			printf("</select>");
+			break;
+		case 'U':
+			memset((char *)&gn,0,sizeof(GN));
+			if( (char *)getenv("SAIHBD") ==NULL){
+				fprintf(stderr,"\n\tReadAxisGN:Variable Entorno SAIHBD NO SET");
+				return(-1);}
+			strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+			if((fh=fopen(path,"r+b"))==NULL){
+				fprintf(stderr,"\nReadAxisGN:No se puede abrir:%s",path);
+				return(-1);}
+			if(!fread(&gn,sizeof(GN),1,fh)){
+				fprintf(stderr,"\nReadAxisGN:Error_En_read:%s Errn=%d",path,errno);
+				fclose(fh);
+				return(-1);}
+			//gn.NumComAxis[0]=1000;
+			//gn.NumComAxis[1]=900;
+			if(argv[1][1]=='G')
+				gn.segjulhis=gn.segjulhis-14400; // 4 horas menos del ultimo Dato
+
+			newtime=localtime(&gn.segjulhis);	
+			//printf("<br><br><table border=\"1\"><tr>");
+			printf("<td><input type=text value=\"%02d\" size=2 maxlen=2 name=\"dia\">/",newtime->tm_mday);
+			printf("<input type=text value=\"%02d\" size=2 maxlen=2 name=\"mes\">/",newtime->tm_mon+1);
+			printf("<input type=text value=\"%d\" size=4 maxlen=4 name=\"anio\">",newtime->tm_year+1900);
+			printf("<input type=text value=\"%02d\" size=2 maxlen=2 name=\"hora\">:",newtime->tm_hour);
+			printf("<input type=text value=\"%02d\" size=2 maxlen=2 name=\"min\"></td>",newtime->tm_min);
+			break;
+	case 'I':
+		if(i=ReadLogerBd(&BdConf)!=0){			// Leer Objeto B.D  BDCONF
+			printf("\n\tReadAxisBd:Error=%d",i);
+			exit(1);}
+			sen=sen - 1;
+			memset((char *)&QmHis,0,sizeof(QmHis));
+			if( i=ReadLogerQmHis(&QmHis) != 0 ){				// Leemos Historicos QM
+				printf("\n\tReadAxisQm:Error=%d",i);
+				exit(1);}
+			// Tabla MIN
+			printf("\n<a href=\"#nowhere\" onclick=\"Switch('tablaDIA'),Desplegar('aDIA')\" style=\"text-align: left; \"><div id=\"aMIN\">[-] %s (%s)</div></a>",BdConf.anaconf.desc[sen],BdConf.anaconf.uni[sen]);
+			printf("\n<div id=\"tablaDIA\" style=\"overflow:auto; height:450px;width:760px;\">");
+			printf("\n<table id=\"tablaDIA\" class=\"datos\">");
+			printf("\n\t<tr class=\"cabecera\">");
+			printf("\n\t<td> Fecha </td>");
+			printf("\n\t<td> %-12s (%s)</td>",BdConf.anaconf.desc[sen],BdConf.anaconf.uni[sen]);
+			
+			printf("\n\t</tr>");
+			for(i=0;i<NUMHISTQM;i++){
+			//for(i=NUMHISTQM-1;i>0;i--){
+				if( QmHis[i].SegJul < segjulqmIni ) continue;	//ultimos dias
+				newtime=localtime(&QmHis[i].SegJul);
+				sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year-100,
+						newtime->tm_hour,newtime->tm_min);
+
+				printf("\n\t<tr class=\"dato\">");
+				printf("\n\t<td> %s</td>",fecha);
+				printf("\n\t<td> %6.2f</td>",QmHis[i].FlValorAna[sen]);				
+				
+			printf("\n\t</tr>");
+			}
+			printf("\n</table></div><BR>");
+			break;
+		break;
+		case 'D':
+			memset((char *)&gn,0,sizeof(GN));
+			if( (char *)getenv("SAIHBD") ==NULL){
+				fprintf(stderr,"\n\tReadAxisGN:Variable Entorno SAIHBD NO SET");
+				return(-1);}
+			strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+			if((fh=fopen(path,"r+b"))==NULL){
+				fprintf(stderr,"\nReadAxisGN:No se puede abrir:%s",path);
+				return(-1);}
+			if(!fread(&gn,sizeof(GN),1,fh)){
+				fprintf(stderr,"\nReadAxisGN:Error_En_read:%s Errn=%d",path,errno);
+				fclose(fh);
+				return(-1);}
+			//printf("\n\t\t<b>Ultimo Juliano Recibido: %d</b>\n",gn.segjulhis);
+			if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF
+				printf("\n\tReadAxisBd:Error=%d",i);
+				exit(1);}
+
+			sen=sen - 1;
+			memset((char *)&QmHis,0,sizeof(QmHis));
+			if( i=ReadLogerQmHis(&QmHis) != 0 ){				// Leemos Historicos QM
+				printf("\n\tReadAxisQm:Error=%d",i);
+				exit(1);}
+			// Tabla MIN
+		//
+		// version 1.2 se elimina desplegar/contraer tabla
+		//
+		//printf("\n<a href=\"#nowhere\" onclick=\"Switch('tablaDIA'),Desplegar('aDIA')\" style=\"text-align: left; \"><div id=\"aMIN\">[-] Tabla Ultimos %hd Dias</div></a>",numhistqm);
+		//	printf("\n<div id=\"tablaDIA\" style=\"overflow:auto; height:450px;width:760px;\">");
+			printf("\n<div id=\"tablaDIA\" class=\"tableDiv\">");
+		//	printf("\n<table id=\"tablaDIA\" class=\"datos\">");
+			printf("\n<table class=\"FixedTables\"><thead>");
+			printf("\n\t<tr class=\"cabecera\">");
+		//	printf("\n\t<td width=\"25\%\"> Fecha (dd/mm/aa hh:mm)</td>");
+			printf("\n\t<th> Fecha (dd/mm/aa hh:mm)</th>");
+			for(i=0;i<NUMSENANASAICA;i++){
+		//		printf("\n\t<th width=\"%d\%\"> %-22s (%-6s)</th>",100/(NUMSENANA+NUMSENCONT+2),BdConf.anaconf.desc[i],BdConf.anaconf.uni[i]);
+				printf("\n\t<th> %-22s (%-6s)</th>",BdConf.anaconf.desc[i],BdConf.anaconf.uni[i]);
+			}
+			printf("\n\t</tr></thead>\n<tbody>");
+			//for(i=0;i<NUMHISTQM;i++){
+			for(i=NUMHISTQM-1;i>0;i--){
+				if( QmHis[i].SegJul < (gn.segjulhis - (numhistqm*SEGPDIA)) ) continue;	//ultimos dias
+				newtime=localtime(&QmHis[i].SegJul);
+				sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year-100,
+						newtime->tm_hour,newtime->tm_min);
+
+		//		printf("\n\t<tr class=\"dato\">");
+				printf("\n\t<tr>");
+		//		printf("\n\t<td width=\"25\%\"> %s</td>",fecha);
+				printf("\n\t<td> %s</td>",fecha);
+				for(j=0;j<NUMSENANASAICA;j++){
+		//			printf("\n\t<td width=\"%hd\%\"> %6.2f %01c</td>",100/(NUMSENANASAICA+2),QmHis[i].FlValorAna[j],QmHis[i].Flag[j]);
+					printf("\n\t<td> %6.2f %01c</td>",QmHis[i].FlValorAna[j],QmHis[i].Flag[j]);
+				}
+				
+			printf("\n\t</tr>");
+			}
+			printf("\n</tbody></table></div><BR>");
+			break;
+		case 'F':	//salida fichero SAICA
+			memset((char *)&gn,0,sizeof(GN));
+			if( (char *)getenv("SAIHBD") ==NULL){
+				fprintf(stderr,"\n\tReadAxisGN:Variable Entorno SAIHBD NO SET");
+				return(-1);}
+			strcat(strcpy(path,(char *)getenv("SAIHBD")),("LogerGen.dat"));      // Parametros Generales
+			if((fh=fopen(path,"r+b"))==NULL){
+				fprintf(stderr,"\nReadAxisGN:No se puede abrir:%s",path);
+				return(-1);}
+			if(!fread(&gn,sizeof(GN),1,fh)){
+				fprintf(stderr,"\nReadAxisGN:Error_En_read:%s Errn=%d",path,errno);
+				fclose(fh);
+				return(-1);}
+			//printf("\n\t\t<b>Ultimo Juliano Recibido: %d</b>\n",gn.segjulhis);
+			if(i=ReadLogerBd(&BdConf)!=0){				// Leer Objeto B.D  BDCONF
+				printf("\n\tReadAxisBd:Error=%d",i);
+				exit(1);}
+
+			memset((char *)&QmHis,0,sizeof(QmHis));
+			if( i=ReadLogerQmHis(&QmHis) != 0 ){				// Leemos Historicos QM
+				printf("\n\tReadAxisQm:Error=%d",i);
+				exit(1);}
+			if (!(argc==3 && argv[1][0]=='F' && argv[1][1]=='H') ){
+				segjulqm=gn.segjulhis;
+			}
+			newtime=localtime(&segjulqm);
+
+			sprintf(fecha,"%02d/%02d/%04d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900);
+			//printf("\nDEBUG: %ld  %s %02d:%02d\n",segjulqm,fecha,newtime->tm_hour,newtime->tm_min);
+			printf("'Nombre: %s Código: %s Fecha: %s Canales:%d IP: %ld.%ld.%ld.%ld",BdConf.remconf.desc,BdConf.remconf.name,fecha,NUMSENANASAICA,gn.iaux[0][0],gn.iaux[0][1],gn.iaux[0][2],gn.iaux[0][3]);
+			printf("\n'HHMM");
+			for (i=0;i<NUMSENANASAICA;i++)
+				printf(";%d,%s,%s",i+1,BdConf.anaconf.tag[i],BdConf.anaconf.uni[i]);
+
+			fflush(stdout);
+
+			//printf("\n%s",fecha);
+			numhistqm=(newtime->tm_hour)*60+(newtime->tm_min);
+			for(i=0;i<NUMHISTQM;i++){
+			//for(i=NUMHISTQM-1;i>0;i--){
+				if( (QmHis[i].SegJul < (segjulqm - (numhistqm*60))) || (QmHis[i].SegJul > (segjulqm + (SEGPDIA-numhistqm*60) -SEGPQM)) ) continue;	//ultimos dias
+				if(QmHis[i].Status != 512) continue;	// si no es status correcto no se imprime linea
+
+				QmHis[i].SegJul+=SEGPQM;
+				newtime=localtime(&QmHis[i].SegJul);
+				if( (newtime->tm_hour==0) && ( newtime->tm_min==0)  )
+					printf("\n2400");
+				else
+					printf("\n%02d%02d",newtime->tm_hour,newtime->tm_min);
+				for(j=0;j<NUMSENANASAICA;j++){
+					printf(" %3.2f%01c",QmHis[i].FlValorAna[j],QmHis[i].Flag[j]);
+				}
+			
+			}
+
+			break;
+
+		case 'S':	// Status LogerGen
+			memset((char *)&gn,0,sizeof(GN));
+			if( (i=ReadLogerGn(&gn)) !=0){
+				printf("\n\tReadLogerGn:Error=%d",i);
+				exit -1;}
+			if (argv[1][1]=='R'){	//resetear fecha ultimo envio FTP
+				gn.UltEnvFtp=0;
+				if( (i=WriteLogerGn(gn)) !=0){
+					printf("\n\tWriteLogerGn:Error=%d",i);
+					exit -1;}
+			}
+
+                        if(i=ReadLogerBd(&BdConf)!=0){                          // Leer Objeto B.D  BDCONF
+                                printf("\n\tReadAxisBd:Error=%d",i);
+                                exit(1);}
+
+			newtime=localtime(&gn.segjulhis);
+			sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900,
+					newtime->tm_hour,newtime->tm_min);
+
+			printf("\n\t<TABLE class=\"datos\"><tr class=\"cabecera\"><td colspan=\"2\"><b>%4s - %s</b></td></tr>",BdConf.remconf.name,BdConf.remconf.desc);
+			printf("\n\t<tr class=\"cabecera\"><td>segjulhis</td><td> %s </td></tr><tr class=\"cabecera\"><td>IndActAna Loger</td><td> %ld </td></tr>",fecha,gn.IndActAna);
+			printf("\n\t<tr class=\"cabecera\"><td>IndHisAna Loger</td><td> %ld </td></tr><tr class=\"cabecera\"><td>IndHisDig Loger</td><td> %ld </td></tr>",gn.IndHisAna,gn.IndHisDig);
+			newtime=localtime(&gn.UltEnvFtp);
+			sprintf(fecha,"%02d/%02d/%02d %02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900,
+					newtime->tm_hour,newtime->tm_min);
+			printf("\n\t<tr class=\"cabecera\"><td>UltEnvFtp</td><td> %s </td></tr><tr class=\"cabecera\"><td>UltEnvFtp (seg.)</td><td> %ld </td></tr>",fecha,gn.UltEnvFtp);
+			printf("\n\t<tr class=\"cabecera\"><td>Sig ANA Loger</td><td> %04X </td></tr><tr class=\"cabecera\"><td>Sig DIG Loger</td><td> %04X </td></tr>",gn.SigQm,gn.SigDig);
+			printf("\n\t<tr class=\"cabecera\"><td>IP GPRS</td><td> %ld.%ld.%ld.%ld </td></tr>",gn.iaux[0][0],gn.iaux[0][1],gn.iaux[0][2],gn.iaux[0][3]);
+			printf("</TABLE>\n<BR>");
+
+			break;
+
+	}
+	printf("\n");
+}
