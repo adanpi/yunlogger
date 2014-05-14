@@ -1,0 +1,582 @@
+BODY {background-color:#53829d;	margin: 0; padding: 0; text-align:center;}
+
+H1 { color: white; font-family: verdana; font-size: 32; margin-left: 10; margin-right:10; text-align:center;}
+H2 { color: #33331c; font-family: verdana; margin: 10px 10px 5px; font-variant: small-caps; font-size: 22px; text-align:center;}
+H3 { color: WHITE; font-family: verdana; margin: 10px 10px 5px; font-variant: small-caps; font-size: 18px; text-align:left;}
+H4 ,H5 { color: WHITE; font-family: verdana; margin: 10px 10px 5px; font-size: 14px;}
+H4 {text-align:left;}
+H5 {text-align:center;}
+
+a:link {
+	color: white;
+}
+a:visited {
+	color: white;
+}
+
+a:active {
+	color: red;
+}
+
+
+img {border: 1px solid #a6a685; }
+
+input, textarea, select{
+	color: #33331c;
+	font-size: 11px; 
+	text-decoration: none;
+	border: 1px solid #a6a685;
+	background-color: #e5e5cf;
+	padding: 3px;
+	}
+input, select{ margin: 0 5px;}
+textarea {margin: 0 10px; width: 100%; height: 350px;}
+input.boton, input.botonc, input.botond { background-color: #d9d9d0;}
+input.botonc { margin: 0 10px;}
+input.botond { margin: 0 10px; width:120;}
+
+#flasharea {margin: 0 10px; width: 100%; height: 500px;}
+
+
+P, a {font-family: verdana; font-size: 13;color: #33331c/*green*/; text-align: justify}
+
+P {margin: 10px;}
+a {text-decoration: none;}
+
+HR {background-color: /*#d9d9d9;e5e5cf;*/#d9d9d0; border: 1px solid #a6a685; height: 5px; margin: 4px 0; width: 95%;}
+
+TABLE.datos {margin: 10px auto; border:0; border-spacing: 1px;}
+TABLE.cent {margin: 0 auto;}
+TABLE.estr {margin: 0; border:0; border-spacing: 0; text-align:center; vertical-align:top;}
+TABLE.dig {margin: 10px auto; border:0; border-spacing: 1px;	width: 75%;}
+
+TR {font-family: verdana; font-size: 13; color:BLACK; height: 30;} 
+TR.dato {background-color:#d9d9d0;text-align:center;} /*b2cc99 #c3d9ad #d9d9d0*/
+TR.cabecera {background-color:#d9d9d0;font-family: verdana; font-size: 14; color:BLACK; height: 30;text-align:center;} /*#adadd9*/
+TR.alt {background-color:#ffecd9;} /*#d3d7f2*/
+
+
+/*TD {font-family: verdana; font-size: 13;background-color:#add9d9;color:black;}
+*/
+TD {padding: 0 5px; }
+TD.cabecera {background-color:#d9d9d0; } /*#adadd9*/
+TD.alt {background-color:#d9d9d0;}
+TD.estr {width:50%;vertical-align:top;}
+
+ul { margin: 0 10 0; padding: 0; border-top: 1px solid #a6a685; border-bottom: 1px solid #a6a685;text-align: center; color: #53829d; font-family: verdana; font-size: 14; font-style: bold; list-style-type: none;}
+li { height: 20px; padding: 0 5px; display: block; vertical-align: center; background: #53829d /*#add9ad*/; margin: 1px 0 0; }
+li:hover {background: #bfbf99/*#bfa78f*/ /*b29c86 #b8e5b8; font-size: 16*/}
+
+ul.simple { border-top: 1px solid #a6a685; border-bottom: 1px solid #a6a685; list-style-type: none;}
+li.simple { height: 20px;display: block; /*padding: 4px 10px;*/ background: #d9d9d0/*#add9ad*/; text-align: left;}
+li.simple:hover { }
+
+/*---------------ESTRUCTURA---------------------*/
+
+
+#page {
+	margin: 10px auto 20px;
+	padding: 0;
+	width: 760px;
+	}
+	
+#header {
+	margin: 10 auto 0 ;
+	padding: 0;
+	width: 760px;
+	}
+
+#footer {margin: 0 10 0}
+
+#contenido { 
+	border-left: 1px solid  #a6a685;
+	border-right: 1px solid  #a6a685;
+	padding: 0 0px; 
+/*	position: static;
+	overflow: hidden;
+*/	}
+
+#bloque { margin:10; text-align:center}
+
+#izda { width:50%; margin:10;}
+#dcha { width:50%; margin:10; float:right}
+
+	#contenido h3 { margin: 10 10 10px; border-bottom: 1px solid #a6a685;}
+	/*#contenido a { color: #33331c; }*/
+
+/*QUIZA SE QUITE*/  #msgR , #msgE {margin: 10px; font-family: verdana; font-size: 13;color: green; text-align: justify}
+
+
+/*---------------------------MENUS----------------------------------*/
+
+/* Root = Horizontal, Secondary = Vertical */
+ul#navmenu-h {
+  margin: 0 10px;
+  border: 0 none;
+  padding: 0;
+  width: 500px; /*For KHTML*/
+  list-style: none;
+  height: 24px;
+}
+
+ul#navmenu-h li {
+  margin: 0;
+  border: 0 none;
+  padding: 0;
+  float: left; /*For Gecko*/
+  display: inline;
+  list-style: none;
+  position: relative;
+  height: 24px;
+}
+
+ul#navmenu-h ul {
+  margin: 0;
+  border: 0 none;
+  padding: 0;
+//  width: 160px;
+  width: auto;
+  list-style: none;
+  display: none;
+  position: absolute;
+  top: 24px;
+  left: 0;
+}
+
+ul#navmenu-h ul:after /*From IE 7 lack of compliance*/{
+  clear: both;
+  display: block;
+  font: 1px/0px serif;
+  content: ".";
+  height: 0;
+  visibility: hidden;
+}
+
+ul#navmenu-h ul li {
+//  width: 200px;
+  width: 15em;
+  float: left; /*For IE 7 lack of compliance*/
+  display: block !important;
+  display: inline; /*For IE*/
+}
+
+/* Root Menu */
+ul#navmenu-h a {
+/*background-color: #e5e5cf;
+*/
+border: 1px solid #d9d9d0;
+border-right-color: #a6a685;
+border-bottom-color: #a6a685;
+
+  padding: 0 6px;
+  float: none !important; /*For Opera*/
+  float: left; /*For IE*/
+  display: block;
+background: #d9d9d0;
+color: #33331c;
+font: bold 11px/22px Verdana, Arial, Helvetica, sans-serif;
+  text-decoration: none;
+  height: auto !important;
+  height: 1%; /*For IE*/
+}
+
+/* Root Menu Hover Persistence */
+ul#navmenu-h a:hover,
+ul#navmenu-h li:hover a,
+ul#navmenu-h li.iehover a {
+background: #b2b28f;
+color: #FFF;
+}
+
+/* 2nd Menu */
+ul#navmenu-h li:hover li a,
+ul#navmenu-h li.iehover li a {
+  float: none;
+border-left-color: #a6a685;
+background: #d9d9d0;
+color: #33331c;
+}
+
+/* 2nd Menu Hover Persistence */
+ul#navmenu-h li:hover li a:hover,
+ul#navmenu-h li:hover li:hover a,
+ul#navmenu-h li.iehover li a:hover,
+ul#navmenu-h li.iehover li.iehover a {
+background: #cccca3;
+color: #FFF;
+}
+
+/* 3rd Menu */
+ul#navmenu-h li:hover li:hover li a,
+ul#navmenu-h li.iehover li.iehover li a {
+background: #e5e5cf;
+color: #33331c;
+}
+
+/* 3rd Menu Hover Persistence */
+ul#navmenu-h li:hover li:hover li a:hover,
+ul#navmenu-h li:hover li:hover li:hover a,
+ul#navmenu-h li.iehover li.iehover li a:hover,
+ul#navmenu-h li.iehover li.iehover li.iehover a {
+background: #cccca3;
+color: #FFF;
+}
+
+/* 4th Menu */
+ul#navmenu-h li:hover li:hover li:hover li a,
+ul#navmenu-h li.iehover li.iehover li.iehover li a {
+background: #e5e5cf;
+color: #33331c;
+}
+
+/* 4th Menu Hover */
+ul#navmenu-h li:hover li:hover li:hover li a:hover,
+ul#navmenu-h li.iehover li.iehover li.iehover li a:hover {
+background: #cccca3;
+color: #FFF;
+}
+
+ul#navmenu-h ul ul,
+ul#navmenu-h ul ul ul {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 200px;
+}
+
+/* Do Not Move - Must Come Before display:block for Gecko */
+ul#navmenu-h li:hover ul ul,
+ul#navmenu-h li:hover ul ul ul,
+ul#navmenu-h li.iehover ul ul,
+ul#navmenu-h li.iehover ul ul ul {
+  display: none;
+}
+
+ul#navmenu-h li:hover ul,
+ul#navmenu-h ul li:hover ul,
+ul#navmenu-h ul ul li:hover ul,
+ul#navmenu-h li.iehover ul,
+ul#navmenu-h ul li.iehover ul,
+ul#navmenu-h ul ul li.iehover ul {
+  display: block;
+}
+
+/*!
+* jquery.fixedHeaderTable. The jQuery fixedHeaderTable plugin
+*
+* Copyright (c) 2011 Mark Malek
+* http://fixedheadertable.com
+*
+* Licensed under MIT
+* http://www.opensource.org/licenses/mit-license.php
+* 
+* http://docs.jquery.com/Plugins/Authoring
+* jQuery authoring guidelines
+*
+* Launch  : October 2009
+* Version : 1.3
+* Released: May 9th, 2011
+*
+* 
+* all CSS sizing (width,height) is done in pixels (px)
+*/
+
+/* @group Reset */
+
+.fht-table,
+.fht-table thead,
+.fht-table tfoot,
+.fht-table tbody,
+.fht-table tr,
+.fht-table th,
+.fht-table td {
+	/* position */
+    margin: 0;
+    
+    /* size */
+	padding: 0;
+
+	/* text */
+	font-size: 100%;
+	font: inherit;
+	vertical-align: top;
+	}
+
+.fht-table {
+	/* appearance */
+    border-collapse: collapse;
+    border-spacing: 0;
+	}
+
+/* @end */
+
+/* @group Content */
+
+.fht-table-wrapper,
+.fht-table-wrapper .fht-thead,
+.fht-table-wrapper .fht-tfoot,
+.fht-table-wrapper .fht-fixed-column .fht-tbody,
+.fht-table-wrapper .fht-fixed-body .fht-tbody,
+.fht-table-wrapper .fht-tbody {
+	/* appearance */
+	overflow: hidden;
+	
+	/* position */
+	position: relative;
+	}
+
+	.fht-table-wrapper .fht-fixed-body .fht-tbody,
+	.fht-table-wrapper .fht-tbody {
+		/* appearance */
+	    overflow: auto;
+		}
+
+		.fht-table-wrapper .fht-table .fht-cell {
+			/* appearance */
+			overflow: hidden;
+			
+			/* size */
+		    height: 1px;
+			}
+	
+	.fht-table-wrapper .fht-fixed-column,
+	.fht-table-wrapper .fht-fixed-body {
+	    /* position */
+	    top: 0;
+	    left: 0;
+	    position: absolute;
+	    }
+	    
+	.fht-table-wrapper .fht-fixed-column {
+	    /* position */
+	    z-index: 1;
+	    }
+
+/* @end */
+
+.divider {
+	margin-top: 40px;
+	}
+	
+.button {
+	/* appearance */
+	background-color: #3f3f3f;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.0) 0%,
+		rgba(255,255,255,0.1) 50%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(100%,rgba(255,255,255,0.0)),
+		color-stop(50%,rgba(255,255,255,0.1)));
+	border: 1px solid #000000;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	-webkit-box-shadow: 0 1px 0 rgba(139,139,139,1) inset, 0 1px 0 rgba(88,88,88,1);
+	-moz-box-shadow: 0 1px 0 rgba(139,139,139,1) inset, 0 1px 0 rgba(88,88,88,1);
+	box-shadow: 0 1px 0 rgba(139,139,139,1) inset, 0 1px 0 rgba(88,88,88,1);
+	cursor: pointer;
+	
+	/* position */
+	display: inline-block;
+	margin: 10px;
+	
+	/* size */
+	padding: 0 10px;
+	
+	/* text */
+	color: #eaeaea;
+	font-size: 12px;
+	line-height: 30px;
+	text-decoration: none;
+	white-space: nowrap;
+	}
+.button:hover {
+	/* appearance */
+	background-color: #6495ed;
+	-webkit-box-shadow: 0 0 3px #6495ed;
+	-moz-box-shadow: 0 0 3px #6495ed;
+	box-shadow: 0 0 3px #6495ed;
+	}
+
+.myTableWrapper {
+	width: 800px;
+	height: 500px;
+	}
+
+.fancyTable td, .fancyTable th {
+	/* appearance */
+	border: 1px solid #778899;
+	
+	/* size */
+	padding: 5px;
+	}
+
+.fancyTable {
+	/* text */
+	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	}
+
+.fancyTable tbody tr td {
+	/* appearance */
+	background-color: #eef2f9;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.4) 0%,
+		rgba(255,255,255,0.2) 50%,
+		rgba(255,255,255,0.1) 51%,
+		rgba(255,255,255,0.0) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.4)),
+		color-stop(50%,rgba(255,255,255,0.2)),
+		color-stop(51%,rgba(255,255,255,0.1)),
+		color-stop(100%,rgba(255,255,255,0.0)));
+		
+	/* text */
+	color: #262c31;
+	font-size: 11px;
+	}
+
+.fancyTable tbody tr.odd td {
+	/* appearance */
+	background-color: #d6e0ef;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.4) 0%,
+		rgba(255,255,255,0.2) 50%,
+		rgba(255,255,255,0.1) 51%,
+		rgba(255,255,255,0.0) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.4)),
+		color-stop(50%,rgba(255,255,255,0.2)),
+		color-stop(51%,rgba(255,255,255,0.1)),
+		color-stop(100%,rgba(255,255,255,0.0)));
+	}
+
+.fancyTable thead tr th,
+.fancyTable tfoot tr td {
+	/* appearance */
+	background-color: #8ca9cf;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.4) 0%,
+		rgba(255,255,255,0.2) 50%,
+		rgba(255,255,255,0.1) 51%,
+		rgba(255,255,255,0.0) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.4)),
+		color-stop(50%,rgba(255,255,255,0.2)),
+		color-stop(51%,rgba(255,255,255,0.1)),
+		color-stop(100%,rgba(255,255,255,0.0)));
+		
+	/* text */
+	color: #121517;
+	font-size: 12px;
+	font-weight: bold;
+	text-shadow: 0 1px 1px #e8ebee;
+	}
+	
+
+/* Fancy Dark Table */	
+.fancyDarkTable .numeric {
+	/* text */
+	text-align: right;
+	}
+
+.fancyDarkTable td, .fancyDarkTable th {
+	border: 1px solid #000000;
+	padding: 5px;
+}
+
+.fancyDarkTable thead tr th {
+	padding: 10px 5px 10px 5px;
+	}
+
+.fancyDarkTable {
+	/*border-collapse: separate;*/
+	
+	/* text */
+	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	}
+
+.fancyDarkTable tbody tr td {
+	/* appearance */
+	background-color: #48535e;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.0) 0%,
+		rgba(255,255,255,0.02) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.0)),
+		color-stop(100%,rgba(255,255,255,0.02)));
+	border-bottom-color: #22272e;
+	border-top-color: #708090;
+	border-right-color: #000;
+	border-left-color: #3c454f;
+
+	/* size */
+	padding: 10px 5px 30px 5px;
+
+	/* text */
+	color: #FFFFFF;
+	font-size: 11px;
+	font-weight: bold;
+	text-shadow: 0 -1px 1px #000000;
+	}
+
+.fancyDarkTable tbody tr.odd td {
+	/* appearance */
+	background-color: #3c454f;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.0) 0%,
+		rgba(255,255,255,0.02) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.0)),
+		color-stop(100%,rgba(255,255,255,0.02)));
+	border-right-color: #000;
+	}
+
+.fancyDarkTable thead tr th,
+.fancyDarkTable tfoot tr td {
+	/* appearance */
+	background-color: #0b0d10;
+	background-image: -moz-linear-gradient(
+		top,
+		rgba(255,255,255,0.4) 0%,
+		rgba(255,255,255,0.2) 50%,
+		rgba(255,255,255,0.1) 51%,
+		rgba(255,255,255,0.0) 100%);
+	
+	background-image: -webkit-gradient(
+		linear, left top, left bottom,
+		color-stop(0%,rgba(255,255,255,0.4)),
+		color-stop(50%,rgba(255,255,255,0.2)),
+		color-stop(51%,rgba(255,255,255,0.1)),
+		color-stop(100%,rgba(255,255,255,0.0)));
+		
+	/* text */
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: bold;
+	text-shadow: 0 -1px 1px #000;
+	}
+	
+.fancyDarkTable .fht-head {
+	-webkit-box-shadow: 0 5px 10px #000;
+	z-index: 1;
+	position: relative;
+	}
+

@@ -1,0 +1,65 @@
+
+
+      +-----------------------------------------------------------------+
+      |                                                                 |
+      |                                                       +---------+-+
+      +-----+                                                 |           |
+      |     |                                                 |    X1     |
+   +--+     |     D11                                         |           |
+   |  |     |    +---+                                        |           |
+   |  | X9  |    |   |         +------------------+           +---------+-+
+   |  |     |    |   |         |                  |           +---------+-+
+   |  |     |    +---+         |                  |           |           |
+   +--+     |                  |       D1         |  +-----+  |    X24    |
+      |     |       +------+   |                  |  | D21 |  |           |
+      +-----+       |      |   |                  |  |     |  |           |
+      +--------+    |      |   |                  |  +-----+  +---------+-+
+     ++        |    | D19  |   |                  |                     |
+  S3 ||  X22   |    |      |   |                  |                   +-+-+
+     ++        |    |      |   +------------------+                   |   |
+      +--------+    +------+                                          |   |
+      |                            +------+                           |   |
+      | +--+                       |      |                           |   |
+      | +--+ V5                    |      |                      X12  |   |
+      |                            |  D2  |                           |   |
+      | +--+                       |      |                           |   |
+      | +--+ V4                    |      |                           |   |
+      |                            |      |                           +-+-+
+      | +--+                       +------+                             |
+      | +--+ V3                                                         |
+      +-----+                                                           |
+      |     |                                                           |
+   +--+     |    D12                                                    |
+   |  |     |   +---+                                                   |
+   |  | X8  |   |   |                                                   |
+   |  |     |   |   |              S1    S4                             |
+   |  |     |   +---+             +--+  +--+                            |
+   +--+     |                     |()|  |()|                            |
+      |     |                     +--+  +--+                        +---+-+
+      +-----+                                                       | X2  |
+      |                                                             +---+-+
+      |                                                                 |
+      +-----------------------------------------------------------------+
+
+D1    ETRAX 100LX MCM 2+8
+D2    8 Mbyte SDRAM
+D11   RS-232 Transceiver
+D12   RS-232 Transceiver
+D19   4 Mbyte flash
+D21   USB to Ethernet controller (Realtek RTL8150)
+
+X1    RJ-45 connector (eth0)
+X2    Power connector
+X8    RS-232 connector (COM2/ser2) 
+X9    RS-232 connector (COM1/ser0)
+X12   RS-422/485 connector (ser3)
+X22   USB connector (USB port 2)
+X24   RJ-45 connector (eth1, USB port1)
+
+V3    Power LED
+V4    eth0 network activity LED
+V5    eth1 network activity LED
+
+S1    Reset button
+S4    Network boot mode button
+S3    Factory default button

@@ -1,0 +1,55 @@
+
+   <table border="0" width="100%">
+    <tr valign="top">
+    <td width="50%" >
+    <h3><b>Administraci&oacute;n Sistema</b></h3>
+    <br>
+
+    <ul>
+      <li><a href="/admin-bin/editcgi.cgi?file=/">Explorar sistema de archivos</a></li>
+      <li><a href="/usr-cgi/fechahora.sh">Fecha-Hora</a></li>
+      <li><a href="/admin-bin/editcgi.cgi?file=/etc/conf.d/net.eth0">IP  Local</a></li>
+      <li><a href="/admin-bin/editcgi.cgi?file=/etc/conf.d/hostname">Nombre Axis</a></li>
+      <li><a href="/comp_ref.txt">Componentes</a></li>
+      <li><a href="/usr-cgi/kernellog.sh">System log</a></li>
+      <li><a href="/usr-cgi/tetralog.sh">TETRA log</a></li>
+      <li><a href="/usr-cgi/reiniciar.sh">Reiniciar Axis</a></li>
+    </ul>
+
+    <br>
+
+  </td>
+
+  <td width="50%" >
+    <h3><b>Administraci&oacute;n Remota</b></h3>
+    <br>
+
+    <ul>
+      <li><a href="/usr-cgi/supervision.sh">Supervisi&oacute;n QuinceMinutales</a></li>
+      <li><a href="/usr-cgi/incidencias.sh">Supervisi&oacute;n Incidencias</a></li>
+      <li><a href="/usr-cgi/mensajes.sh">Supervisi&oacute;n Mensajes</a></li>
+      <li><a href="/usr-cgi/configuracion.sh">Configuraci&oacute;n</a></li>
+      <li><a href="/usr-cgi/aplicaciones.sh">Aplicaciones</a></li>
+      <li><a href="/usr-cgi/axislog.sh">Log Aplicaci&oacute;n</a></li>
+      <li><a href="/usr-cgi/reiniciarbd.sh">Iniciar Bases Datos</a></li>
+      <li><a href="/usr-cgi/imagenes.sh">Im&aacute;genes</a></li>
+      <li><a href="/usr-cgi/estadistica.sh">Estad&iacute;stica Comunicaciones Axis-Remota</a></li>
+      <li><a href="/usr-cgi/graficas.sh">Gr&aacute;ficas</a></li>
+    </ul>
+
+    <br>
+
+  </td>
+  </tr>
+ </table>
+
+ </div>
+
+
+ <hr>
+ 
+ <div id="footer">
+ <h4><a href="/manual/book1.htm">Manual de Usuario</a></h4>
+ </div>
+
+
