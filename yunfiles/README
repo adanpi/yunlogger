@@ -1,3 +1,24 @@
 Ficheros en raíz de linino /:
 /www
 /radsys
+
+Instrucciones de instalación:
+
+1. transferir ficheros al linino, primero /radsys :
+$ scp radsys.tar.gz root:IP_yun:/radsys.tar.gz
+
+2. conectar a yun mediante ssh y descomprimir radsys.tar.gz en /:
+yun$ tar -xzf radsys.tar.gz
+
+3. eliminar fichero descomprimido:
+yun$ rm radsys.tar.gz
+
+4. transferir ficheros al linino, primero /www :
+$ scp radsys.tar.gz root:IP_yun:/www.tar.gz
+
+5. lo mismo para www.tar.gz
+yun$ tar -xzf www.tar.gz
+
+3. eliminar fichero descomprimido:
+yun$ rm www.tar.gz
+
