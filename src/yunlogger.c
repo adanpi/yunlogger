@@ -10,6 +10,9 @@
 *
 *              Modificaciones:
 *                      04/06/2014      Inicio proyecto
+*			16/12/2014	Incorporar escritura modbus de los datos adquiridos y de las medias
+*
+*		TODO: intervalo integración variable, hay que cambiar cabeceras .h y la lógica de todo el sistema.
 *
 */
 #include <math.h>
@@ -26,7 +29,7 @@
 #include "logersaihbd.h"
 
 
-static char *version = "1.1 (23/06/2014)";
+static char *version = "1.1.01 (16/12/2014: +modbus  23/06/2014 1.1.00: +conf. file)";
 
 #define NUMSEN 10
 
@@ -45,10 +48,10 @@ int main(int argc, char *argv[])
 	struct tm *newtime;
 	char *auxch;
 	FILE *fhf;
-	float valor, valoracum[NUMSEN];
+	float valor, valoracum[NUMSEN],valoractual[NUMSEN];
 	unsigned short valors;
 	unsigned int valorint;
-
+	unsigned char table[80],caracter[2];
 
 	if ( (argc==2) && (argv[1][1]=='v')){
 		printf("\n************************************");
@@ -71,6 +74,7 @@ int main(int argc, char *argv[])
 	for(sen=0;sen<NUMSEN;sen++){
 		numMuestreos[sen]=0;
 		valoracum[sen]=0;
+		valoractual[sen]=0;
 	}
 
 	// leer parámetros de adquisición
@@ -121,7 +125,8 @@ int main(int argc, char *argv[])
 		segjulact=time(NULL);					// Hora Actual
 		newtime=localtime(&segjulact);
 		auxch=asctime(newtime);
-		printf("\n\tYUN_DATALOGER:FECHA ACTUAL = %ld  %s ",segjulact,auxch);
+		sprintf(ch,"%02d/%02d/%02d %02d:%02d:%02d",newtime->tm_mday,newtime->tm_mon+1,newtime->tm_year+1900,newtime->tm_hour,newtime->tm_min,newtime->tm_sec);
+		printf("\n\tYUN_DATALOGER:FECHA ACTUAL = %ld  %s ",segjulact,ch);
 
 		// comprobar cuando llega el 10 minutal exacto para iniciar el muestreo si es el primero
 		// o guardar el 10 minutal si no es el primero
@@ -155,11 +160,52 @@ int main(int argc, char *argv[])
 	
 				printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
 				valoracum[sen]+=valor;
+				valoractual[sen]=valor;
 				numMuestreos[sen]++;
 			}
 			printf("\n\tYUN_DATALOGER:POST-SCAN: %s ",comando[numSen+1]);
-			// comando POST-SCAN
+			// comando POST-SCANConfTty
 			system(comando[numSen+1]);
+
+			// guardar datos adquiridos en esclavo modbus local
+
+			//envio modbus QM.Fecha
+
+			sprintf(auxch,"/radsys/pollmb/pollmb.py -h 127.0.0.1 -a 4026 -f 16 -q 20 -d ");
+     			for(j=0;j<20;j++){
+                		//printf(" %04x ",ch[j]);
+				sprintf(caracter,"%04x",ch[j]);
+				strcat(auxch,caracter);}
+			
+			printf("\n%s\n",auxch);
+			fflush(stdout);
+
+			system(auxch);
+
+			memset((unsigned char *)&table,0,sizeof(table));
+			i=0;
+			for(sen=0;sen<numSen;sen++){
+				valor = valoractual[sen];
+				table[i++] = (unsigned char)*((unsigned char *)&valor);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +1);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +2);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +3);
+				//printf("\n valoractual[%d] %f \n",sen,valor);
+        			//for(j=0;j<80;j++){
+                		//	printf("%02x ",table[j]);}
+			}
+			sprintf(auxch,"/radsys/pollmb/pollmb.py -h 127.0.0.1 -a 4054 -f 16 -q %d -d ",numSen*2);
+        		for(j=0;j<numSen*4;j++){
+                		printf(" %02x ",table[j]);
+				sprintf(caracter,"%02x",table[j]);
+				strcat(auxch,caracter);}
+			printf("\n\tYUN_DATALOGER: modbus muestreos: %s \n",auxch);
+
+			printf("\n%s\n",auxch);
+			fflush(stdout);
+
+			system(auxch);
+			// fin modbus
 		}
 
 		if(guardarDato==1){
@@ -221,6 +267,7 @@ int main(int argc, char *argv[])
 			        qm.ValorAna[sen]=valors;
 				numMuestreos[sen]=0;
 				valoracum[sen]=0;
+				valoractual[sen]=0;
 			}
 
 			qm.NumCont=NUMSENCONT;	// no hay contadores cincominutales
@@ -236,6 +283,34 @@ int main(int argc, char *argv[])
 			if( (j=WriteLogerGn(gn)) !=0)
 				printf("\n\tWriteLogerGn:Error=%d",j);
 
+
+			// guardar QM en esclavo modbus local
+			// primero crear string hexadecimal
+			memset((unsigned char *)&table,0,sizeof(table));
+			i=0;
+			for(sen=0;sen<numSen;sen++){
+				valor = qm.FlValorAna[sen];
+				table[i++] = (unsigned char)*((unsigned char *)&valor);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +1);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +2);
+				table[i++] = (unsigned char)*((unsigned char *)&valor +3);
+				printf("\n valorqm[%d] %f \n",sen,valor);
+        			for(j=0;j<80;j++){
+                			printf("%02x ",table[j]);}
+			}
+			sprintf(auxch,"/radsys/pollmb/pollmb.py -h 127.0.0.1 -a 3054 -f 16 -q %d -d ",numSen*2);
+        		for(j=0;j<numSen*4;j++){
+                		printf(" %02x ",table[j]);
+				sprintf(caracter,"%02x",table[j]);
+				strcat(auxch,caracter);}
+			printf("\n\tYUN_DATALOGER: modbus qm: %s \n",auxch);
+
+			printf("\n%s\n",auxch);
+			fflush(stdout);
+
+			system(auxch);
+			// fin modbus
+			
 			guardarDato=0;
 			segjulqm=segjulqm+SEGPQM;
 		}

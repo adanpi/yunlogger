@@ -5,9 +5,7 @@
 CFLAGS_SHARED	= -g -O3 -fPIC
 #LDFLAGS+= -L/datos/arduino/openwrt/trunk/staging_dir/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib/
 
-all: yunlogger
-
-yunlogger: info libidata.so axisloger ipcserver leerlogerbd cgi killpid deftablas sftpclient AxionMain leermodbus axismbus 
+all: info libidata.so axisloger ipcserver leerlogerbd cgi killpid deftablas sftpclient AxionMain leermodbus axismbus yunlogger test
 
 nfsaxplc: limpiar axplc
 	cp -a bin /axoteclinux/nfs2target/
@@ -54,6 +52,19 @@ libidata.so: ./src/logersaihbd.c ./src/juliano.c ./src/IpcFun.c ./src/SigPro.c .
 	$(CC) $(CFLAGS_SHARED) -c ./src/modbus_tcp_maestro.c
 	$(CC) -o libidata.so logersaihbd.o juliano.o IpcFun.o SigPro.o cgl.o UtilTty.o AxisLogerUtil.o  mbs.o commun.o modbus_tcp_maestro.o -shared -lpthread -lm
 
+
+test: test.o libidata.so
+	$(CC) -o bin/$@ $@.o -L. -lidata
+
+test.o: src/test.c
+	$(CC) -c src/test.c 
+
+yunlogger: yunlogger.o libidata.so
+	$(CC) -o bin/$@ $@.o -L. -lidata
+
+yunlogger.o: src/yunlogger.c
+	$(CC) -c src/yunlogger.c 
+
 axismbus: axismodbus.o libidata.so
 	$(CC) axismodbus.o -o bin/axismbus -L. -lidata -lpthread
 
@@ -88,7 +99,7 @@ AxionMain.o: src/AxionMain.c
 	$(CC) -c src/AxionMain.c
 
 AxionMain: AxionMain.o libidata.so
-	$(CC) -o yunlogger $@.o -L. -lidata
+	$(CC) -o bin/$@ $@.o -L. -lidata
 
 axisloger.o: src/axisloger.c
 	$(CC) -c src/axisloger.c

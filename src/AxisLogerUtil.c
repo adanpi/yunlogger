@@ -969,7 +969,7 @@ unsigned long IndAct;
 	// Se leen factores analogicas de la BdConf
 	memset((char *)&BdConf,0,sizeof(BDCONF));
 
-	if(i=ReadLogerBd(BdConf)!=0){
+	if(i=ReadLogerBd(&BdConf)!=0){
 		printf("\n\t CrearBufferQm Error lectura BdConfig:Error=%d",i);
 		return(-3);}
 

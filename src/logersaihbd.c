@@ -554,7 +554,7 @@ unsigned int valorint;
 	// Se leen factores analogicas de la BdConf
 	memset((char *)&BdConf,0,sizeof(BDCONF));
 
-	if(j=ReadLogerBd(BdConf)!=0){
+	if(j=ReadLogerBd(&BdConf)!=0){
 		printf("\n\t IniDatosAna Error lectura BdConfig:Error=%d",j);
 		return(-3);}
 
@@ -645,6 +645,7 @@ IniLogerBd()
 		strcpy(BdConf.anaconf.desc[i],aux);
 		BdConf.anaconf.fcm[i]=0.1;
 		BdConf.anaconf.fca[i]=-2000.0;
+		printf("\n\t IniLogerBd:sen=%d %s fcm=%f fca=%f ",i,aux,BdConf.anaconf.fcm[i],BdConf.anaconf.fca[i]);
 	}
 
         if( (char *)getenv("SAIHBD") ==NULL){
