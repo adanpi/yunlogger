@@ -32,6 +32,7 @@
 static char *version = "1.1.01 (16/12/2014: +modbus  23/06/2014 1.1.00: +conf. file)";
 
 #define NUMSEN 10
+#define NUMCHARCOMMANDS 133
 
 GN gn;
 QM qm;
@@ -39,10 +40,10 @@ BDCONF BdConf;
 
 int main(int argc, char *argv[])
 {
-	short i,j,n,ipid,muestreo,adquirirDato=0,guardarDato=0,numSen;
-	int sen;
+	short i,j,n,ipid,muestreo,adquirirDato=0,guardarDato=0,numSen=0,numSenMB,indicePostScan=0;
+	int sen,system_err;
 	char name[15],path[92];
-	char aux[64],ch[133],comando[NUMSEN][133];
+	char aux[192],ch[NUMCHARCOMMANDS],comando[NUMSEN][NUMCHARCOMMANDS];
 	long numMuestreos[NUMSEN];
 	unsigned long segjulact,segjulnew,espera,segjulqm;
 	struct tm *newtime;
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
 	
 	if((fhf=fopen(path,"r"))!=NULL){
 		i=0;
-		while(fgets(ch,130,fhf)){
+		while(fgets(ch,NUMCHARCOMMANDS,fhf)){
 			printf("\n\tyunlogger.conf[%d]=%s",i,ch);
 			if(i==2){
 				if(sscanf(ch,"%hd",&muestreo)!=1){
@@ -97,7 +98,6 @@ int main(int argc, char *argv[])
 					sprintf(aux,"yunlogger.conf error en linea 7: Numero de señales: %s",ch);
 					AxisLog(aux);				// Log
 					printf("\n\t  %s \n",aux);
-					numSen=1;
 				}
 				
 			}
@@ -106,9 +106,19 @@ int main(int argc, char *argv[])
 			}
 			i++;
 		}
+		indicePostScan=i-9;
 		fclose(fhf);
+		if(numSen==0 || indicePostScan==0){
+			sprintf(aux,"yunlogger.conf error numSen=0 %hd || indicePostScan=0 %hd",numSen,indicePostScan);
+			AxisLog(aux);				// Log
+			printf("\n\t  %s \n",aux);
+			exit(0);
+		}
 	}else{
-		printf("\n\tyunlogger.conf no encontrado en %s",path);
+		sprintf(aux,"yunlogger.conf no encontrado en %s",path);
+		printf("\n\t  %s \n",aux);
+		AxisLog(aux);
+		exit(0);
 	}
 
 	segjulact=time(NULL);	
@@ -137,36 +147,92 @@ int main(int argc, char *argv[])
 		}
 
 		if(adquirirDato==1){
-			printf("\n\tYUN_DATALOGER:PRE-SCAN: %s ",comando[numSen]);
+			printf("\n\tYUN_DATALOGER:PRE-SCAN: %s ",comando[indicePostScan-1]);
 			// comando PRE-SCAN
-			system(comando[numSen]);
+			system_err=system(comando[indicePostScan-1]);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",comando[indicePostScan-1]);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
 			for(sen=0;sen<numSen;sen++){
 				printf("\n\tYUN_DATALOGER:adquisicion datos %d: %s ",sen,comando[sen]);
-				system(comando[sen]);
-		
-				strcpy(path,"/tmp/yunlogger");
-				sprintf(aux,".%d",(sen+1));
-				strcat(path,aux);
-				if((fhf=fopen(path,"r"))!=NULL){
-					while(fgets(name,14,fhf)){
-						printf("\n\tYUN_DATALOGER: /tmp/yunlogger: %s ",name);
-					}
-				}
-				fclose(fhf);
-	
-				if( sscanf(name,"%f",&valor) != 1 ){
-					printf("\n\ttyunlogger error convertir valor %s\n",name);
-				}
-	
-				printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
-				valoracum[sen]+=valor;
-				valoractual[sen]=valor;
-				numMuestreos[sen]++;
-			}
-			printf("\n\tYUN_DATALOGER:POST-SCAN: %s ",comando[numSen+1]);
-			// comando POST-SCANConfTty
-			system(comando[numSen+1]);
 
+				// verificar si es un comando de adquisición múltiple modbus
+				if(comando[sen][0]=='M'){
+					// ver cuantas señales MB a muestrear
+					if(sscanf(comando[sen]+1,"%hd",&numSenMB)!=1){
+						sprintf(aux,"yunlogger.conf error en comando MB, numsenMB: %s",comando[sen]);
+						AxisLog(aux);				// Log
+						printf("\n\t  %s \n",aux);
+						numSenMB=0;
+					}
+					strncpy(auxch,comando[sen] +3,NUMCHARCOMMANDS);
+					printf("\n\tYUN_DATALOGER: esclavo modbus numSenMB:%d comando %s ",numSenMB,auxch);
+					system_err=system(auxch);
+					if(system_err==-1){
+						sprintf(aux,"error system(%s)",auxch);
+						AxisLog(aux);				// Log
+						printf("\n\t  %s \n",aux);
+					}
+					// para cada señal ModBus el comando debe dar su valor ingeniería en /tmp/yunlogger.NUMSEN
+					for(j=0;j<numSenMB;j++){
+						strcpy(path,"/tmp/yunlogger");
+						sprintf(aux,".%d",(sen+1));
+						strcat(path,aux);
+						if((fhf=fopen(path,"r"))!=NULL){
+							while(fgets(name,14,fhf)){
+							printf("\n\tYUN_DATALOGER: /tmp/yunlogger: %s ",name);
+							}
+						}
+						fclose(fhf);
+			
+						if( sscanf(name,"%f",&valor) != 1 ){
+							printf("\n\tyunlogger error convertir valor %s\n",name);
+						}
+			
+						printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
+						valoracum[sen]+=valor;
+						valoractual[sen]=valor;
+						numMuestreos[sen]++;
+		
+					}
+		
+				}else{
+					system_err=system(comando[sen]);
+					if(system_err==-1){
+						sprintf(aux,"error system(%s)",comando[sen]);
+						AxisLog(aux);				// Log
+						printf("\n\t  %s \n",aux);
+					}		
+					strcpy(path,"/tmp/yunlogger");
+					sprintf(aux,".%d",(sen+1));
+					strcat(path,aux);
+					if((fhf=fopen(path,"r"))!=NULL){
+						while(fgets(name,14,fhf)){
+							printf("\n\tYUN_DATALOGER: /tmp/yunlogger: %s ",name);
+						}
+					}
+					fclose(fhf);
+	
+					if( sscanf(name,"%f",&valor) != 1 ){
+						printf("\n\tyunlogger error convertir valor %s\n",name);
+					}
+	
+					printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
+					valoracum[sen]+=valor;
+					valoractual[sen]=valor;
+					numMuestreos[sen]++;
+				}
+			}
+			printf("\n\tYUN_DATALOGER:POST-SCAN: %s ",comando[indicePostScan]);
+			// comando POST-SCANConfTty			
+			system_err=system(comando[indicePostScan]);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",comando[indicePostScan]);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
 			// guardar datos adquiridos en esclavo modbus local
 
 			//envio modbus QM.Fecha
@@ -178,9 +244,13 @@ int main(int argc, char *argv[])
 				strcat(auxch,caracter);}
 			
 			printf("\n%s\n",auxch);
-			fflush(stdout);
-
-			system(auxch);
+			fflush(stdout);			
+			system_err=system(auxch);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",auxch);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
 
 			memset((unsigned char *)&table,0,sizeof(table));
 			i=0;
@@ -204,7 +274,12 @@ int main(int argc, char *argv[])
 			printf("\n%s\n",auxch);
 			fflush(stdout);
 
-			system(auxch);
+			system_err=system(auxch);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",auxch);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
 			// fin modbus
 		}
 
@@ -308,7 +383,12 @@ int main(int argc, char *argv[])
 			printf("\n%s\n",auxch);
 			fflush(stdout);
 
-			system(auxch);
+			system_err=system(auxch);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",auxch);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
 			// fin modbus
 			
 			guardarDato=0;

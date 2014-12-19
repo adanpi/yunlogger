@@ -1,4 +1,4 @@
-# Configuracion yun logger. IMPORTANTE respetar el orden de las líneas
+# configuracion yun logger
 # tiempo muestreo (decimas de segundo)
 50
 # periodo almacenamiento datos (minutos) (por ahora no se puede cambiar, sólo 10 minutos)

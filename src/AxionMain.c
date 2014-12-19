@@ -33,7 +33,7 @@ FILE *fhf;
 GN gn;
 BDCONF BdConf;
 int Pidlog();
-char name[192],path[92],aux[92];
+char name[192],path[92],aux[192];
 struct stat bufstat;
 
 char ch[133],bufpro[52][134];
@@ -49,7 +49,7 @@ struct tm *newtime;
 char *auxch;
 short flaggprs,flaghora,flagFTP;
 
-int debug,nmes,ndia,nano,hora,minuto,segundo;
+int debug,nmes,ndia,nano,hora,minuto,segundo,system_err;
 
 int main(int argc, char *argv[])
 {
@@ -253,7 +253,13 @@ void leerRTC(){
         sprintf(aux,"\"%04d-%02d-%02d %02d:%02d:%02d\"",nano,nmes,ndia,hora,minuto,segundo);
 	strcat(name,aux);
 	printf("\n%s\n",name);
-	system(name);
+	
+	system_err=system(name);
+	if(system_err==-1){
+	sprintf(aux,"error system(%s)",name);
+		AxisLog(aux);				// Log
+		printf("\n\t  %s \n",aux);
+	}
 
 }
 

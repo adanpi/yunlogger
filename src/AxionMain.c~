@@ -33,7 +33,7 @@ FILE *fhf;
 GN gn;
 BDCONF BdConf;
 int Pidlog();
-char name[192],path[92],aux[92];
+char name[192],path[92],aux[192];
 struct stat bufstat;
 
 char ch[133],bufpro[52][134];
@@ -211,11 +211,13 @@ int main(int argc, char *argv[])
 			system(name);
 		}
 */
-		// si ha pasado frecuencia minutos desde ultimo envio y estamos 30 sg adelante del 10 min exacto mandamos FTP
+		// si ha pasado frecuencia minutos desde ultimo envio y estamos 30 sg adelante del 10 min exacto mandamos FTP y releer fechahora del RTC
 		segjulqm=((segjulact/SEGPQM)*SEGPQM);
 		if( (ultimoEnvioFTP + BdConf.remconf.frecuencia*60 ) < (segjulqm+30) ) flagFTP=1;
 
-		if (flagFTP==1) EnvioFTP(segjulqm);
+		if (flagFTP==1){
+			EnvioFTP(segjulqm);
+			leerRTC();}
 		else EnvioFTPHist(segjulqm);	// Enviar Historicos si es necesario cuando no se manda el actual
 
 		printf("\n\t-------------------------------------------------------------------------------------------");
@@ -251,7 +253,13 @@ void leerRTC(){
         sprintf(aux,"\"%04d-%02d-%02d %02d:%02d:%02d\"",nano,nmes,ndia,hora,minuto,segundo);
 	strcat(name,aux);
 	printf("\n%s\n",name);
-	system(name);
+	
+	system_err=system(name);
+	if(system_err==-1){
+	sprintf(aux,"error system(%s)",name);
+		AxisLog(aux);				// Log
+		printf("\n\t  %s \n",aux);
+	}
 
 }
 
