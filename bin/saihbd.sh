@@ -1,0 +1,3 @@
+SAIHBD=/radsys/
+export SAIHBD
+
