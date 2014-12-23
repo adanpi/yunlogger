@@ -157,11 +157,11 @@ int main(int argc, char *argv[])
 			}
 			for(sen=0;sen<numSen;sen++){
 				printf("\n\tYUN_DATALOGER:adquisicion datos %d: %s ",sen,comando[sen]);
-
+				valor=0;
 				// verificar si es un comando de adquisición múltiple modbus
 				if(comando[sen][0]=='M'){
 					// ver cuantas señales MB a muestrear
-					if(sscanf(comando[sen][1],"%hd",&numSenMB)!=1){
+					if(sscanf(comando[sen]+1,"%hd",&numSenMB)!=1){
 						sprintf(aux,"yunlogger.conf error en comando MB, numsenMB: %s",comando[sen]);
 						AxisLog(aux);				// Log
 						printf("\n\t  %s \n",aux);

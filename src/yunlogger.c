@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 			}
 			for(sen=0;sen<numSen;sen++){
 				printf("\n\tYUN_DATALOGER:adquisicion datos %d: %s ",sen,comando[sen]);
-
+				valor=0;
 				// verificar si es un comando de adquisición múltiple modbus
 				if(comando[sen][0]=='M'){
 					// ver cuantas señales MB a muestrear
@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
 					}
 					// para cada señal ModBus el comando debe dar su valor ingeniería en /tmp/yunlogger.NUMSEN
 					for(j=0;j<numSenMB;j++){
+						valor=0;
 						strcpy(path,"/tmp/yunlogger");
 						sprintf(aux,".%d",(sen+1));
 						strcat(path,aux);
@@ -199,6 +200,7 @@ int main(int argc, char *argv[])
 					}
 		
 				}else{
+					valor=0;
 					system_err=system(comando[sen]);
 					if(system_err==-1){
 						sprintf(aux,"error system(%s)",comando[sen]);

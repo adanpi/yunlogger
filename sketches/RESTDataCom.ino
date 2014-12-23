@@ -47,14 +47,15 @@
   #include <YunServer.h>
   #include <YunClient.h>
   #include <Wire.h>
+  #include <Servo.h>
   #include "RTClib.h"
   RTC_DS1307 RTC;
-  
+  Servo myservo;
   // Listen on default port 5555, the webserver on the Yun
   // will forward there all the HTTP requests for us.
   YunServer server;
   
-  // para depuracion, siempre activo depurar desde Serial
+  // para depuracion, siempre activo depurar desde //Serial
   // info trace con parametro trace=1
   //#define DEBUG 1
   #define CODIGO_ERROR -9999
@@ -68,15 +69,25 @@
   // centímetros * 58 = Max.TimeOut
   Ultrasonic ultrasonic(5,6,20000); // (Trig PIN,Echo PIN,Max.TimeOut in µsec )
   
-  
+  const int buttonPin = 12;     // the number of the pushbutton pin
+  const int ledPin =  11;      // the number of the LED pin
+  int buttonState = 0;         // variable for reading the pushbutton status
+
   void setup() {
-    Serial.begin(9600);
+    ////Serial.begin(9600);
     // Bridge startup
     pinMode(13,OUTPUT);
     digitalWrite(13, LOW);
     Bridge.begin();
     digitalWrite(13, HIGH);
     
+    //iniciar leds
+    pinMode(10,OUTPUT);
+    pinMode(ledPin,OUTPUT);
+    //boton    
+    pinMode(buttonPin,INPUT);
+    
+
       // inicializar sensor ultrasonidos
     pinMode(4, OUTPUT); // VCC pin
     pinMode(7, OUTPUT); // GND ping
@@ -85,14 +96,30 @@
   
     // Listen for incoming connection only from localhost
     // (no one from the external network could connect)
-    server.listenOnLocalhost();
+    //server.listenOnLocalhost();
     server.begin();
     
-      Wire.begin();
-      RTC.begin();
+    Wire.begin();
+    RTC.begin();
+    myservo.attach(9);  // attaches the servo on pin 9 to the servo object
   }
   
   void loop() {
+    
+      // read the state of the pushbutton value:
+  buttonState = digitalRead(buttonPin);
+
+  // check if the pushbutton is pressed.
+  // if it is, the buttonState is HIGH:
+  if (buttonState == HIGH) {
+    // turn LED on:
+    digitalWrite(ledPin, HIGH);
+  }
+  else {
+    // turn LED off:
+    digitalWrite(ledPin, LOW);
+  }
+  
     // Get clients coming from server
     YunClient client = server.accept();
   
@@ -136,6 +163,39 @@
     if (command == "time") {
       timeCommand(client);
     }  
+    
+    // is "servo" command?
+    if (command == "servo") {
+      servoCommand(client);
+    } 
+    
+  }
+  
+  
+  void servoCommand(YunClient client){
+    int pin, value;
+       // Read pin number
+    pin = client.parseInt();
+  
+    // If the next character is a '/' it means we have an URL
+    // with a value like: "/servo/5/120"
+    if (client.read() == '/') {
+      // Read value and execute command
+      value = client.parseInt();
+      analogWrite(pin, value);
+  
+      // Send feedback to client
+      client.print(F("Servo en pin "));
+      client.print(pin);
+      client.print(F(" set to degrees "));
+      client.println(value);
+      if(value>180)
+        client.println("valor > de 180");
+      else
+        myservo.write(value);
+      }else{
+       client.println("falta valor del servo ej: /servo/9/45");
+     }
     
   }
   
@@ -525,9 +585,9 @@
                     client.println(indiceMax); 
                     client.println(indiceMin); 
                   }   
-                    Serial.println("Indices extremos"); 
-                    Serial.println(indiceMax); 
-                    Serial.println(indiceMin);                 
+                    //Serial.println("Indices extremos"); 
+                    //Serial.println(indiceMax); 
+                    //Serial.println(indiceMin);                 
          // filtro de extremos: 
          if(filtrar){
            for (int rep=0;rep<numRep;rep++){
@@ -544,8 +604,8 @@
                   client.println("inicializar medida"); 
                   client.println(medida); 
                  }
-                  Serial.println("inicializar medida"); 
-                  Serial.println(medida);                
+                  //Serial.println("inicializar medida"); 
+                  //Serial.println(medida);                
                   iniciadosValores=true;              
                }
                switch (calculo){
@@ -567,8 +627,8 @@
                   client.println("medida final"); 
                   client.println(medida); 
                }
-                  Serial.println("medida final"); 
-                  Serial.println(medida);             
+                  //Serial.println("medida final"); 
+                  //Serial.println(medida);             
            //calculo final
                switch (calculo){
                  case 1:  // med 
@@ -593,8 +653,8 @@
                   client.println("inicializar medida"); 
                   client.println(medida); 
                  }
-                  Serial.println("inicializar medida"); 
-                  Serial.println(medida);                
+                  //Serial.println("inicializar medida"); 
+                  //Serial.println(medida);                
                   iniciadosValores=true;              
                }
                switch (calculo){
@@ -616,8 +676,8 @@
                   client.println("medida final"); 
                   client.println(medida); 
                } 
-                  Serial.println("medida final"); 
-                  Serial.println(medida);              
+                  //Serial.println("medida final"); 
+                  //Serial.println(medida);              
            //calculo final
                switch (calculo){
                  case 1:  // med 
@@ -643,8 +703,8 @@
                   client.println("retorno"); 
                   client.println(medida); 
                } 
-                  Serial.println("retorno"); 
-                  Serial.println(medida);   
+                  //Serial.println("retorno"); 
+                  //Serial.println(medida);   
   
   return medida;
   
