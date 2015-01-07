@@ -41,6 +41,12 @@
   http://yun/usr-cgi/luci/arduino/time/1,2
   http://yun/usr-cgi/luci/arduino/time/1,3,2014,12,17,16,30,10
   
+  Incorporado a 29 de diciembre de 2014
+  
+  Funciones de escritura de servomotor: http://yun/usr-cgi/luci/arduino/servo/9/180
+  
+  Funciones de lectura de digitales 10,11 y 12 en bloque:
+  
   */
   
   #include <Bridge.h>
@@ -452,7 +458,17 @@
   
     // Read pin number
     pin = client.parseInt();
-  
+    
+    // si se pide el pin -1 se leen los pines 10 a 12 y se devuelven seguidos ej: 101
+    if(pin==-1)  {
+      value = digitalRead(10);
+      client.print(value);
+      value = digitalRead(11);
+      client.print(value);
+      value = digitalRead(12);
+      client.print(value);
+      client.println("00000");
+    }else{
     // If the next character is a '/' it means we have an URL
     // with a value like: "/digital/13/1"
     if (client.read() == '/') {
@@ -473,6 +489,7 @@
     String key = "D";
     key += pin;
     Bridge.put(key, String(value));
+    }
   }
   
   void analogCommand(YunClient client) {
