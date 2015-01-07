@@ -5,7 +5,7 @@
 CFLAGS_SHARED	= -g -O3 -fPIC
 #LDFLAGS+= -L/datos/arduino/openwrt/trunk/staging_dir/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib/
 
-all: info libidata.so axisloger ipcserver leerlogerbd cgi killpid deftablas sftpclient AxionMain leermodbus axismbus yunlogger test
+all: info libidata.so axisloger ipcserver leerlogerbd cgi killpid deftablas sftpclient AxionMain leermodbus axismbus yunlogger test yuncontrol
 
 nfsaxplc: limpiar axplc
 	cp -a bin /axoteclinux/nfs2target/
@@ -58,6 +58,12 @@ test: test.o libidata.so
 
 test.o: src/test.c
 	$(CC) -c src/test.c 
+
+yuncontrol: yuncontrol.o libidata.so
+	$(CC) -o bin/$@ $@.o -L. -lidata
+
+yuncontrol.o: src/yuncontrol.c
+	$(CC) -c src/yuncontrol.c 
 
 yunlogger: yunlogger.o libidata.so
 	$(CC) -o bin/$@ $@.o -L. -lidata
