@@ -67,7 +67,7 @@ main(int argc, char **argv)
 	fflush(stdout);	
 
 	//asignacion nuevos valores
-	for (i=AnaIni;i<AnaIni+NUMANACONF;i++){
+	for (i=AnaIni;i<AnaIni+NUMDIGCONF;i++){
 
 		sprintf(aux,"%s%d","TAG",i);
 		if(DEBUG){	printf("debugCGI  %s %s\n<BR>",aux,cgl_getvalue(aux));}
@@ -108,7 +108,7 @@ main(int argc, char **argv)
 
 	printf("<table class=\"datos\"><tr><td></td><td>Tag</td><td>Descripcion</td><td>Etiqueta 0</td><td>Etiqueta 1</td></tr>");
 
-	for(i=AnaIni;i<AnaIni+NUMANACONF;i++){
+	for(i=AnaIni;i<AnaIni+NUMDIGCONF;i++){
 		if(DEBUG){
 		printf("\n\t %s %s %s",BdConf.digconf.tag[i],BdConf.digconf.desc[i],BdConf.digconf.etiqueta0[i]);
 		}
@@ -140,14 +140,14 @@ main(int argc, char **argv)
 		printf("<br><hr><br>");
 		printf("<table><tr>");
 		if (AnaIni > 0){
-		sprintf(&AnaFinChar,"%d%",AnaIni-NUMANACONF);
+		sprintf(&AnaFinChar,"%d%",AnaIni-NUMDIGCONF);
 		if(DEBUG){	printf("debugCGI Analogica Inicial %d\n<BR>",AnaIni);}
 		printf("<td><form action=digitales.sh method=POST>\n");
 		printf("<input type=submit value=\"Anteriores\">\n");
 		cgl_put_hidden("AnaIni",AnaFinChar);
 		printf("</form></td>\n");
 		}
-		sprintf(&AnaFinChar,"%d%",AnaIni+NUMANACONF);
+		sprintf(&AnaFinChar,"%d%",AnaIni+NUMDIGCONF);
 		if(DEBUG){	printf("debugCGI Analogica Inicial %d\n<BR>",AnaIni);}
 		printf("<td><form action=digitales.sh method=POST>\n");
 		printf("<input type=submit value=\"Siguientes\">\n");

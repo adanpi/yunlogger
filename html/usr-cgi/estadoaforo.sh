@@ -8,9 +8,10 @@ echo '<!DOCTYPE HTML>'
 echo '<html>'
 
 echo '<head>'
-ip=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | a
+ip=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
 echo '<meta http-equiv="refresh" content="0; url=http://'
 echo $ip
 echo ':8082/aforo.xhtml" />'
 echo '</head>'
 echo '</html>'
+

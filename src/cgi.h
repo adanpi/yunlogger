@@ -7,7 +7,8 @@
 #define CompilarAxis 1
 
 
-#define NUMANACONF 8
+#define NUMANACONF 18
+#define NUMDIGCONF 8
 #define DEPURAR 0
 
 #define SAIHBD_PATH "/radsys/"

@@ -205,9 +205,10 @@ main(int argc, char **argv)
 
 			printf("\n<tr class=\"dato\"><td>%s</td><td>%d</td><td>%d</td><td>%s</td><td>%s</td><td>%hd</td><td class=\"alt\">%s</td></tr>",auxch,i,in.NumSen[i],BdConf.digconf.tag[in.NumSen[i]-1],BdConf.digconf.desc[in.NumSen[i]-1],in.Estado[i],EtiAux);
 
-			printf("\n\tBufferIn \t");
-			for(l=0;l<4;l++) printf("%02x ",in.BufferIn[i][l]);
-
+			if(DEBUG){
+				printf("\n\tBufferIn \t");
+				for(l=0;l<4;l++) printf("%02x ",in.BufferIn[i][l]);
+			}
 			j++;
 		}
 

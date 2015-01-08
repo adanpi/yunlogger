@@ -1,6 +1,6 @@
 #!/bin/sh
-. ./inicioLigero.sh
+. /www/usr-cgi/inicioLigero.sh
 
 $SAIHBD/bin/escribirdigitalescgi
 
-./fin.sh /usr-cgi/configuracion.sh
+/www/usr-cgi/fin.sh /usr-cgi/configuracion.sh

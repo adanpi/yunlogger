@@ -34,6 +34,10 @@ static char *version = "1.0.01 (29/12/2014: inicial)";
 GN gn;
 QM qm;
 BDCONF BdConf;
+IN in;
+struct tm *newtime;
+unsigned long segjulact,segjulnew,espera,segjulqm;
+
 
 int main(int argc, char *argv[])
 {
@@ -41,9 +45,7 @@ int main(int argc, char *argv[])
 	int sen,system_err;
 	char name[15],path[92];
 	char aux[192],ch[NUMCHARCOMMANDS],comando[NUMSEN][NUMCHARCOMMANDS];
-	long numMuestreos[NUMSEN];
-	unsigned long segjulact,segjulnew,espera,segjulqm;
-	struct tm *newtime;
+	long numMuestreos[NUMSEN];	
 	char *auxch;
 	FILE *fhf;
 	float valor, valoracum[NUMSEN],valoractual[NUMSEN];
@@ -181,7 +183,9 @@ int main(int argc, char *argv[])
 						printf("\n\tYUN_CONTROL: %hd",valors);
 						// comprobar cambios
 						if(estado_digitales[i]!=valors){
-							printf("\n\tYUN_CONTROL: cambio estado digital %d -> %hd",i,valors);
+							printf("\n\tYUN_CONTROL: cambio estado digital %d -> %hd",i+1,valors);
+							// guardar incidencia (i+1-> primera digital 1, no 0)
+							guardarIncid(i+1,valors);
 							//actuarCambioDigital
 							for(j=1;j<numSen;j++){
 								if(comando[j][0]=='D'){
@@ -232,7 +236,7 @@ int main(int argc, char *argv[])
 				// comando servo
 				}else if(comando[sen][0]=='S'){
 					strncpy(auxch,comando[sen] +1,NUMCHARCOMMANDS);
-					printf("\n\tYUN_CONTROL: servo:%d comando %s ",numSenMB,auxch);
+					printf("\n\tYUN_CONTROL: servo comando %s ",auxch);
 					system_err=system(auxch);
 					if(system_err==-1){
 						sprintf(aux,"error system(%s)",auxch);
@@ -269,5 +273,70 @@ int main(int argc, char *argv[])
 
 
 	exit(0);
+}
+
+
+void guardarIncid(int i, short estado){
+	unsigned char auxchar;
+	unsigned short valors;
+	int j;
+	char * auxch;
+
+	printf("\n\tYUN_CONTROL: guardar incid %d -> %hd",i,estado);
+	if( (j=ReadLogerIn(&in)) != 0){				//Axis Incidencias
+		printf("\n\tReadLogerIn:No Read:Error=%d",j);
+		sprintf(auxch,"ReadLogerIn:No Read:Error=%d",j);
+		AxisLog(auxch);                                           // Log
+		return(3);
+	}
+
+	in.IndUltIn=in.IndUltIn+1;
+	segjulact=time(NULL);					// Hora Actual
+	newtime=localtime(&segjulact);
+	auxch=asctime(newtime);
+
+	in.SegJulIn[in.IndUltIn]=segjulact;
+	in.NumSen[in.IndUltIn]=i;
+	in.Estado[in.IndUltIn]=estado;
+	//crear BufferIn, primero se copia la fecha
+	segjulact=htonl(in.SegJulIn[in.IndUltIn]-SEGJULCTESAC);
+	memcpy(in.BufferIn[in.IndUltIn],(char *)&segjulact,4);
+	//el bit alto primer byte (numero señal -1 (¿¿FE??) estado de la señal
+	valors=in.NumSen[in.IndUltIn] - 1;
+	memcpy((char *)&auxchar,(char *)&valors,1);
+	if ( in.Estado[in.IndUltIn] == 1){
+		auxchar |= 0x80;
+		printf("\n\tCrearBufferIn Estado 1\t %02x",auxchar);
+	}else{ 
+		printf("\n\tCrearBufferIn Estado 0\t %02x",auxchar);
+	}
+	//se asigna el primer byte modificado numero se señal y estado
+	memcpy((char *)in.BufferIn[in.IndUltIn],(char *)&auxchar,1);
+
+	printf("\n\tCrearBufferIn \t");
+		for(j=0;j<4;j++)
+		printf("%02x ",in.BufferIn[in.IndUltIn][j]);
+	
+	printf("\n\t\tFecha Incidencia(%d): %s \t Señal: %d \t Estado: %d \n",i,auxch,in.NumSen[in.IndUltIn],in.Estado[in.IndUltIn]);
+	
+	in.IndAct=in.IndUltIn;
+
+	if(in.IndAct > VALMAXIND)		
+		in.IndAct = in.IndAct - VALMAXIND -1;
+
+	if(in.IndAct < 0) in.IndAct = in.IndAct + VALMAXIND + 1;		// + IndAct NO Negativo
+
+	in.IndUltIn=in.IndAct;
+
+	in.NumInAlm=in.IndAct;
+
+	in.ValMaxInd=NUMINALM;			// (NUMINALM o VALMAXIN) ???
+
+	if(i=WriteLogerIn(in) !=0)
+		printf("\n\tWriteLogerIn:No Write");
+	printf("\n\tAXIS:IndAct=%hd (%0x) IndUltIn=%hd (%0x) NumInAlm=%hd (%0x)",
+	in.IndAct,in.IndAct,in.IndUltIn,in.IndUltIn,in.NumInAlm,in.NumInAlm);
+	printf("\n\t------------------------------------------------------------------------------");
+
 }
 

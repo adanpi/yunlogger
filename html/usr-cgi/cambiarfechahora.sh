@@ -12,10 +12,12 @@ eval `/www/usr-cgi/proccgi.sh $*`
 echo '<table class="cent">'
 
 echo '<tr class="dato"><td class="cabecera">Fecha antigua</td><td>'
-hwtestrtc -r
+date -u
 echo '</td></tr>'
 echo '<tr class="dato"><td class="cabecera">Fecha nueva</td><td class="alt">'
-hwtestrtc -s $FORM_anio-$FORM_mes-$FORM_dia $FORM_hora:$FORM_minuto:$FORM_segundo
+wget http://localhost/usr-cgi/luci/arduino/time/1,3,$FORM_anio,$FORM_mes,$FORM_dia,$FORM_hora,$FORM_minuto,$FORM_segundo -O - -q -T 1 > /tmp/yunlogger.setdate
+date -s "$FORM_anio-$FORM_mes-$FORM_dia $FORM_hora:$FORM_minuto:$FORM_segundo"
+date -u
 echo '</td></tr>'
 
 echo '</table>'
