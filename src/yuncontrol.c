@@ -283,7 +283,7 @@ void guardarIncid(int i, short estado){
 	char * auxch;
 
 	printf("\n\tYUN_CONTROL: guardar incid %d -> %hd",i,estado);
-	if( (j=ReadLogerIn(&in)) != 0){				//Axis Incidencias
+	if( (j=ReadLogerIn(in)) != 0){				//Axis Incidencias
 		printf("\n\tReadLogerIn:No Read:Error=%d",j);
 		sprintf(auxch,"ReadLogerIn:No Read:Error=%d",j);
 		AxisLog(auxch);                                           // Log
@@ -332,7 +332,7 @@ void guardarIncid(int i, short estado){
 
 	in.ValMaxInd=NUMINALM;			// (NUMINALM o VALMAXIN) ???
 
-	if(i=WriteLogerIn(in) !=0)
+	if( (j=WriteLogerIn(in)) !=0)
 		printf("\n\tWriteLogerIn:No Write");
 	printf("\n\tAXIS:IndAct=%hd (%0x) IndUltIn=%hd (%0x) NumInAlm=%hd (%0x)",
 	in.IndAct,in.IndAct,in.IndUltIn,in.IndUltIn,in.NumInAlm,in.NumInAlm);

@@ -27,7 +27,7 @@ Version 1.3
 #define NUMPPPERR 30
 #define TIEMPOESPERA 300	//espera entre ciclos programa en segundos
 
-static char *version = "1.1.01 Fecha:17/12/2014 + RTC";
+static char *version = "1.1.02 (12/01/2015 + curl para envio ftp 17/12/2014 + RTC)";
 
 FILE *fhf;
 GN gn;
@@ -336,11 +336,14 @@ int EnviarFichero(unsigned long segjul){
 	strcpy(aux,"");
 	strcpy(name,"");
 	sprintf(aux,"%04d%02d%02d.dat",newtime->tm_year+1900,newtime->tm_mon+1,newtime->tm_mday);
-	sprintf(name,"%s/bin/sftpclient -p %s -c SIMAM/%s/ -l %s -u %s -w %s -k /tmp/ ",(char *)getenv("SAIHBD"),BdConf.remconf.ipnameFTP,BdConf.remconf.directorio,aux,BdConf.remconf.usuario,BdConf.remconf.contrasenia);
-	sprintf(aux,"-T %d -I %d %s ",TIMEOUTFTP,TIMELOGOUTFTP,PASIVO);
-	strcat(name,aux);
-	strcpy(aux,"2> /tmp/envioFTP.log");
-	strcat(name,aux);
+	//sprintf(name,"%s/bin/sftpclient -p %s -c SIMAM/%s/ -l %s -u %s -w %s -k /tmp/ ",(char *)getenv("SAIHBD"),BdConf.remconf.ipnameFTP,BdConf.remconf.directorio,aux,BdConf.remconf.usuario,BdConf.remconf.contrasenia);
+	//sprintf(aux,"-T %d -I %d %s ",TIMEOUTFTP,TIMELOGOUTFTP,PASIVO);
+	//strcat(name,aux);
+
+	// se emplea curl desde la version 1.1.02
+	// curl -T /tmp/20150112.dat ftp://zinho:RePu1931@radsys.es/SIMAM/yun/
+	sprintf(name,"curl -T /tmp/%s ftp://%s:%s@%s/SIMAM/%s/ --stderr /tmp/envioFTP.log --fail --silent --show-error ",aux,BdConf.remconf.usuario,BdConf.remconf.contrasenia,BdConf.remconf.ipnameFTP,BdConf.remconf.directorio);
+
 	printf("\n %s \n",name);
 	if (debug==1) return 0;
 	system(name);
