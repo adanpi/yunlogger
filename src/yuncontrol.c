@@ -290,7 +290,17 @@ void guardarIncid(int i, short estado){
 		return;
 	}
 
-	in.IndUltIn=in.IndUltIn+1;
+	// si se ha reseteado el índice comenzamos desde cero
+	if(in.FlagIn==1){
+		in.IndUltIn=0;
+		in.FlagIn=0;
+	}else
+		in.IndUltIn=in.IndUltIn+1;
+	// comprobar si se supera VALMAXIND
+	if(in.IndUltIn >= VALMAXIND)		
+		in.IndUltIn = 0;
+
+	
 	segjulact=time(NULL);					// Hora Actual
 	newtime=localtime(&segjulact);
 	auxch=asctime(newtime);
@@ -320,13 +330,6 @@ void guardarIncid(int i, short estado){
 	printf("\n\t\tFecha Incidencia(%d): %s \t Señal: %d \t Estado: %d \n",i,auxch,in.NumSen[in.IndUltIn],in.Estado[in.IndUltIn]);
 	
 	in.IndAct=in.IndUltIn;
-
-	if(in.IndAct > VALMAXIND)		
-		in.IndAct = in.IndAct - VALMAXIND -1;
-
-	if(in.IndAct < 0) in.IndAct = in.IndAct + VALMAXIND + 1;		// + IndAct NO Negativo
-
-	in.IndUltIn=in.IndAct;
 
 	in.NumInAlm=in.IndAct;
 
