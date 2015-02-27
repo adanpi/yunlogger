@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
 	//ConfiguracionInicialBdRemota();
 
-	CopiaBdRemotaModBus();
+	//CopiaBdRemotaModBus();
 
 	if(ComTcp){
 		socket=set_up_tcp_slave();

@@ -45,7 +45,9 @@
   
   Funciones de escritura de servomotor: http://yun/usr-cgi/luci/arduino/servo/9/180
   
-  Funciones de lectura de digitales 10,11 y 12 en bloque:
+  Funciones de lectura de digitales 10,11 y 12 en bloque, con digital -1 (/arduino/digital/-1)
+  
+  11 de Febrero de 2014: se incorpora lectura modbus por rs232 de otro arduino
   
   */
   
@@ -53,10 +55,42 @@
   #include <YunServer.h>
   #include <YunClient.h>
   #include <Wire.h>
-  #include <Servo.h>
+//  #include <Servo.h>
   #include "RTClib.h"
+
+  // modbus
+  #include <SimpleModbusMasterSoftSerial.h>
+  #include <SoftwareSerial.h>
+  SoftwareSerial mySerial(15, 16); // RX, TX
+  //////////////////// Port information ///////////////////
+#define baud 9600
+#define timeout 1000
+#define polling 200 // the scan rate
+#define retry_count 10
+// used to toggle the receive/transmit pin on the driver
+#define TxEnablePin 2
+// The total amount of available memory on the master to store data
+#define TOTAL_NO_OF_REGISTERS 4
+
+// This is the easiest way to create new packets
+// Add as many as you want. TOTAL_NO_OF_PACKETS
+// is automatically updated.
+enum
+{
+  PACKET1,
+//  PACKET2,
+  TOTAL_NO_OF_PACKETS // leave this last entry
+};
+
+// Create an array of Packets to be configured
+Packet packets[TOTAL_NO_OF_PACKETS];
+
+// Masters register array
+unsigned int regs[TOTAL_NO_OF_REGISTERS];
+  // fin modbus
+
   RTC_DS1307 RTC;
-  Servo myservo;
+//  Servo myservo;
   // Listen on default port 5555, the webserver on the Yun
   // will forward there all the HTTP requests for us.
   YunServer server;
@@ -78,6 +112,7 @@
   const int buttonPin = 12;     // the number of the pushbutton pin
   const int ledPin =  11;      // the number of the LED pin
   int buttonState = 0;         // variable for reading the pushbutton status
+
 
   void setup() {
     ////Serial.begin(9600);
@@ -107,7 +142,12 @@
     
     Wire.begin();
     RTC.begin();
-    myservo.attach(9);  // attaches the servo on pin 9 to the servo object
+//    myservo.attach(9);  // attaches the servo on pin 9 to the servo object
+
+    // modbus
+    modbus_construct(&packets[PACKET1], 1, READ_HOLDING_REGISTERS, 0, 4, 0);
+    modbus_configure(&mySerial, baud, SERIAL_8N1, timeout, polling, retry_count, TxEnablePin, packets, TOTAL_NO_OF_PACKETS, regs);
+    // fin modbus
   }
   
   void loop() {
@@ -154,12 +194,12 @@
     if (command == "analog") {
       analogCommand(client);
     }
-  
+    /*
     // is "mode" command?
     if (command == "mode") {
       modeCommand(client);
     }
-    
+    */
     // is "data" command?
     if (command == "data") {
       dataCommand(client);
@@ -172,12 +212,27 @@
     
     // is "servo" command?
     if (command == "servo") {
-      servoCommand(client);
+      //servoCommand(client);
     } 
     
+    // is "modbus" command?
+    if (command == "modbus") {
+      mbCommand(client);
+    }
+    
   }
+
   
-  
+  void mbCommand(YunClient client){
+
+    client.println("ModBus");
+    modbus_update();
+    client.println(regs[0]);
+    client.println(regs[1]);
+    client.println(regs[2]);
+    client.println(regs[3]);
+  }
+ /* 
   void servoCommand(YunClient client){
     int pin, value;
        // Read pin number
@@ -204,7 +259,7 @@
      }
     
   }
-  
+  */
   void timeCommand(YunClient client) {
     
       // read the oldest byte in the client buffer:
@@ -532,7 +587,7 @@
       Bridge.put(key, String(value));
     }
   }
-  
+  /*
   void modeCommand(YunClient client) {
     int pin;
   
@@ -569,6 +624,7 @@
     client.print(mode);
   }
   
+  */
   
   // metodo encargado de las diferentes medidas
   double medidaSensor(YunClient client){

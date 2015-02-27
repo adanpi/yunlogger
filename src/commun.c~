@@ -477,7 +477,7 @@ int receive_response(  unsigned char *received_string, int sfd )
 			}
 #ifdef DEBUG
 			/* display the hex code of each character received */
-			fprintf( stderr, "<%02X>", rxchar);		
+			fprintf( stderr, "<%02X> ", rxchar);		
 #endif
 
 		}

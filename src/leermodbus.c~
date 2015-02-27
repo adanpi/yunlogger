@@ -85,7 +85,7 @@ if(sscanf(argv[7],"%d",&debug)!=1){
   if(result > 0) /* if no comms erros */
   {
 	if(debug>0)
-		printf("\nLeermodbus\n");
+		printf("\nLeermodbus");
 
 		for(j=0;j<numreg;j++){
 			printf("%d\n",table[j]);

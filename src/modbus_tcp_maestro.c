@@ -33,18 +33,18 @@
 
 **********************************************************************/
 
-int modbus_response( unsigned char *data, unsigned char *query, int fd )
+int modbus_response( unsigned char *data, unsigned char *query, int fd ,int rtu)
 {
 	int response_length;
 
 
 	/* local declaration */
-	int receive_response( unsigned char *received_string, int sfd );
+	int receive_response( unsigned char *received_string, int sfd);
 
 
 
 	response_length = receive_response( data, fd );
-	if( response_length > 0 )
+	if( response_length > 0 && rtu==0)
 	{
 
 		/********** check for exception response *****/
@@ -54,6 +54,20 @@ int modbus_response( unsigned char *data, unsigned char *query, int fd )
 
 			/* return the exception value as a -ve number */
 			response_length = 0 - data[ 8 ];
+#ifdef DEBUG
+	fprintf( stderr, "Excepcion %d.\n",response_length);
+#endif
+		}
+	}
+	else if(response_length > 0 && rtu==1){
+
+		/********** check for exception response *****/
+
+		if( response_length && data[ 0 ] != query [ 0 ] )
+		{
+
+			/* return the exception value as a -ve number */
+			response_length = 0 - data[ 1 ];
 #ifdef DEBUG
 	fprintf( stderr, "Excepcion %d.\n",response_length);
 #endif
@@ -86,14 +100,14 @@ int modbus_response( unsigned char *data, unsigned char *query, int fd )
 				/* 2 for the checksum.                    */
 
 void build_request_packet( int slave, int function, int start_addr,
-			   int count, unsigned char *packet )
+			   int count, unsigned char *packet , int rtu)
 {
-	int i;
+	int i=0;
 
-
-	for( i = 0; i < 5 ; i++ ) packet[ i ] = 0;
-
-	packet[ i++ ] = 6;
+	if(rtu !=1)
+		for( i = 0; i < 5 ; i++ ) packet[ i ] = 0;
+	if(rtu !=1)
+		packet[ i++ ] = 6;
 	packet[ i++ ] = slave;
 	packet[ i++ ] = function;
 	//start_addr -= 1;
@@ -101,7 +115,10 @@ void build_request_packet( int slave, int function, int start_addr,
 	packet[ i++ ] = start_addr & 0x00ff;
 	packet[ i++ ] = count >> 8;
 	packet[ i ] = count &0x00ff;
-
+	
+	if(rtu==1){
+		Mb_calcul_crc(packet,6, 0);
+	}
 }
 
 
@@ -130,7 +147,7 @@ int read_IO_status( int function, int slave, int start_addr, int count,
 
 
 	unsigned char packet[ REQUEST_QUERY_SIZE + CHECKSUM_SIZE ];
-	build_request_packet( slave, function, start_addr, count, packet );
+	build_request_packet( slave, function, start_addr, count, packet ,0);
 
 	if( send_query( sfd, packet, REQUEST_QUERY_SIZE ) > -1 )
 	{
@@ -217,7 +234,7 @@ int read_IO_stat_response( int *dest, int dest_size, int coil_count,
 	int temp, i, bit, dest_pos = 0;
 	int coils_processed = 0;
 
-	raw_response_length = modbus_response( data, query, fd );
+	raw_response_length = modbus_response( data, query, fd,0 );
 
 
 	if( raw_response_length > 0 )
@@ -260,21 +277,26 @@ int read_IO_stat_response( int *dest, int dest_size, int coil_count,
 ************************************************************************/
 
 int read_registers( int function, int slave, int start_addr, int count,
-			  int *dest, int dest_size, int sfd )
+			  int *dest, int dest_size, int sfd, int rtu_over_tcp)
 {
 	/* local declaration */
 	int read_reg_response( int *dest, int dest_size,
-					unsigned char *query, int fd );
+					unsigned char *query, int fd ,int rtu);
 
 	int status;
 
 
 	unsigned char packet[ REQUEST_QUERY_SIZE + CHECKSUM_SIZE ];
-	build_request_packet( slave, function, start_addr, count, packet );
+	build_request_packet( slave, function, start_addr, count, packet , rtu_over_tcp);
 
-	if( send_query( sfd, packet, REQUEST_QUERY_SIZE ) > -1 )
+	int bytes_a_enviar=REQUEST_QUERY_SIZE;
+
+	if(rtu_over_tcp)
+		bytes_a_enviar=REQUEST_QUERY_SIZE-4;
+
+	if( send_query( sfd, packet, bytes_a_enviar ) > -1 )
 	{
-		status = read_reg_response( dest, dest_size, packet, sfd );
+		status = read_reg_response( dest, dest_size, packet, sfd ,rtu_over_tcp);
 	}
 	else
 	{
@@ -297,7 +319,7 @@ int read_registers( int function, int slave, int start_addr, int count,
 *************************************************************************/
 
 int leer_registros_modbus( int slave, int start_addr, int count,
-				int *dest, int dest_size, int sfd )
+				int *dest, int dest_size, int sfd ,int rtu_over_tcp)
 {
 	int function = 0x03;    /* Function: Read Holding Registers */
 	int status;
@@ -311,11 +333,16 @@ int leer_registros_modbus( int slave, int start_addr, int count,
 	}
 
 	status = read_registers( function, slave, start_addr, count,
-						dest, dest_size, sfd );
+						dest, dest_size, sfd ,rtu_over_tcp);
 
 #ifdef DEBUG
 	fprintf( stderr, "\n leer_registros_modbus %d bytes.\n",status);
 #endif
+
+	// para RTU over TCP ignoramos errores anteriores
+	if(rtu_over_tcp==1){
+		
+	}
 	return( status);
 }
 
@@ -333,7 +360,7 @@ int leer_registros_modbus( int slave, int start_addr, int count,
 *************************************************************************/
 
 int read_input_registers_tcp( int slave, int start_addr, int count,
-				int *dest, int dest_size, int sfd )
+				int *dest, int dest_size, int sfd ,int rtu_over_tcp)
 {
 	int function = 0x04;	/* Function: Read Input Reqisters */
 	int status;
@@ -346,8 +373,7 @@ int read_input_registers_tcp( int slave, int start_addr, int count,
 #endif
 	}
 
-	status = read_registers( function, slave, start_addr, count,
-						dest, dest_size, sfd );
+	status = read_registers( function, slave, start_addr, count,dest, dest_size, sfd,rtu_over_tcp );
 
 	return( status );
 }
@@ -365,7 +391,7 @@ int read_input_registers_tcp( int slave, int start_addr, int count,
 
 ************************************************************************/
 
-int read_reg_response( int *dest, int dest_size, unsigned char *query, int fd )
+int read_reg_response( int *dest, int dest_size, unsigned char *query, int fd ,int rtu)
 {
 
 	unsigned char data[ MAX_RESPONSE_LENGTH ];
@@ -374,12 +400,12 @@ int read_reg_response( int *dest, int dest_size, unsigned char *query, int fd )
 
 
 
-	raw_response_length = modbus_response( data, query, fd );
+	raw_response_length = modbus_response( data, query, fd ,rtu);
 	if( raw_response_length > 0 )
 		raw_response_length -= 2;
 
 
-	if( raw_response_length > 0 )
+	if( raw_response_length > 0 && rtu==0)
 	{
 		for( i = 0;
 			i < ( data[8] * 2 ) && i < (raw_response_length / 2);
@@ -389,6 +415,16 @@ int read_reg_response( int *dest, int dest_size, unsigned char *query, int fd )
 			temp = data[ 9 + i *2 ] << 8;
 			/* OR with lo_byte           */
 			temp = temp | data[ 10 + i * 2 ];
+
+			dest[i] = temp;
+		}
+	}else if ( raw_response_length > 0 && rtu==1){
+		for( i = 0;i < ( data[2] * 2 ) ;i++ )
+		{
+			/* shift reg hi_byte to temp */
+			temp = data[ 3 + i *2 ] << 8;
+			/* OR with lo_byte           */
+			temp = temp | data[ 4 + i * 2 ];
 
 			dest[i] = temp;
 		}
@@ -421,7 +457,7 @@ int preset_response( unsigned char *query, int fd )
 	unsigned char data[ MAX_RESPONSE_LENGTH ];
 	int raw_response_length;
 
-	raw_response_length = modbus_response( data, query, fd );
+	raw_response_length = modbus_response( data, query, fd ,0);
 
 	return( raw_response_length );
 }
@@ -766,6 +802,36 @@ int set_up_tcp( char *ip_address )
 
 	return( sfd );
 }
+
+int set_up_tcp_port( char *ip_address , int port)
+{
+	int sfd;
+	struct sockaddr_in server;
+	int connect_stat;
+
+	sfd = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP );
+
+	server.sin_family = AF_INET;
+	server.sin_port = htons( port );
+	server.sin_addr.s_addr = inet_addr(ip_address);
+
+	if( sfd >= 0 )
+	{
+		connect_stat = connect( sfd, (struct sockaddr *)&server,
+						sizeof(struct sockaddr_in) );
+
+		if( connect_stat < 0 )
+		{
+			fprintf( stderr, "\n error conexion %s [%d]\n",ip_address,port  );
+			close( sfd );
+			sfd = -1;
+			// exit( connect_stat );
+		}
+	}
+
+	return( sfd );
+}
+
 
 
 

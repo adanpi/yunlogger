@@ -40,7 +40,7 @@
 
 #define NUMIPAXIS "10.10.10.239"
 #define ISBIGENDIAN 0	//IsBigEndian=1 en Axis
-//#define DEBUG	// descomentar para ver bytes comunicaciones
+#define DEBUG	// descomentar para ver bytes comunicaciones
 #define MODBUS_TCP_PORT 502
 #define TIMEOUT 30      /* Tiempo de vida de los socket establecidos si no hay transferencia de datos*/
 
