@@ -7,7 +7,7 @@
 #define CompilarAxis 1
 
 
-#define NUMANACONF 18
+#define NUMANACONF 24
 #define NUMDIGCONF 8
 #define DEPURAR 0
 

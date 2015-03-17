@@ -32,7 +32,7 @@ char *argv[];
 int argc;
 {
 
-        if ( (argc==1) || ((argc>2) && (argc<8))|| ((argc==2) && (argv[1][1]=='v'))){
+        if ( (argc==1) || ((argc>2) && (argc<8)) || ((argc==2) && (argv[1][1]=='v'))){
                 printf("\n************************************");
                 printf("\n\t radsys.es");
                 printf("\n\t leermodbus Version: %s",version);
@@ -71,10 +71,19 @@ if(sscanf(argv[7],"%d",&debug)!=1){
 	return(-1);
 }
 
-	if(debug>0)
+	if(debug>0){
 		printf("\n\t host [%s:%d] esclavo [%d] reg_ini [%d] numreg [%d] rtu [%d]",argv[1],port,esclavo,reg_ini,numreg,rtu);
+		if(numreg>0)
+			printf("\n\t\t lectura registros funcion 3");
+		else{
+			// si se pasa valor negativo de numero de registros es el valor a escribir
+			printf("\n\t\t escritura registro funcion 6, valor: %d",0-numreg);	
+		}
+	}
 
  sfd = set_up_tcp_port(argv[1],port);
+
+if(numreg>0){
   
   /*
    * Leer en esclavo 1 NUMSENANATOT registros desde posicion POS_MB_ANAMIN_ANA1
@@ -95,7 +104,18 @@ if(sscanf(argv[7],"%d",&debug)!=1){
   }else
   	printf("No hay respuesta modbus\n");
 
+}else{
+	result = escribir_registro_modbus( esclavo, reg_ini, 0-numreg, sfd ,rtu);
+  if(result > 0) /* if no comms erros */
+  {
+	if(debug>0)
+		printf("\nLeermodbus->%d \n",result);
 
+	if(debug>0)
+		printf("\nFin Leermodbus\n");
+  }else
+  	printf("No hay respuesta modbus\n");
+}
   //ioctl(sfd,TCSETA,&tsaved);
 
   close(sfd);

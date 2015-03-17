@@ -475,17 +475,21 @@ int preset_response( unsigned char *query, int fd )
 
 **************************************************************************/
 
-int set_single( int function, int slave, int addr, int value, int fd )
+int set_single( int function, int slave, int addr, int value, int fd ,int rtu)
 {
 
 	int status;
-	int i;
+	int i=0;
 
 	unsigned char packet[ REQUEST_QUERY_SIZE ];
 
+	if(rtu !=1)
+		for( i = 0; i < 5 ; i++ ) packet[ i ] = 0;
+	if(rtu !=1)
+		packet[ i++ ] = 6;
 
-	for( i = 0; i < 5; i++ ) packet[ i ] = 0;
-	packet[ i++ ] = 6;
+//	for( i = 0; i < 5; i++ ) packet[ i ] = 0;
+//	packet[ i++ ] = 6;
 	packet[ i++ ] = slave;
 	packet[ i++ ] = function;
 	//addr -= 1;
@@ -493,6 +497,11 @@ int set_single( int function, int slave, int addr, int value, int fd )
 	packet[ i++ ] = addr & 0x00FF;
 	packet[ i++ ] = value >> 8;
 	packet[ i++ ] = value & 0x00FF;
+
+	if(rtu==1){
+		Mb_calcul_crc(packet,6, 0);
+		i=i+2;
+	}
 
 	if( send_query( fd, packet, i ) > -1 )
 	{
@@ -519,14 +528,14 @@ int set_single( int function, int slave, int addr, int value, int fd )
 
 *************************************************************************/
 
-int establecer_estado_digital( int slave, int coil_addr, int state, int fd )
+int establecer_estado_digital( int slave, int coil_addr, int state, int fd ,int rtu)
 {
 	int function = 0x05;
 	int status;
 
 	if( state ) state = 0xFF00;
 	coil_addr++;
-	status = set_single( function, slave, coil_addr, state, fd );
+	status = set_single( function, slave, coil_addr, state, fd ,rtu);
 
 	return( status );
 }
@@ -543,12 +552,12 @@ int establecer_estado_digital( int slave, int coil_addr, int state, int fd )
 
 *************************************************************************/
 
-int escribir_registro_modbus(int slave, int reg_addr, int value, int fd )
+int escribir_registro_modbus(int slave, int reg_addr, int value, int fd , int rtu)
 {
 	int function = 0x06;
 	int status;
 
-	status = set_single( function, slave, reg_addr, value, fd );
+	status = set_single( function, slave, reg_addr, value, fd ,rtu);
 
 	return( status );
 }

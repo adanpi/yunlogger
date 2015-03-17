@@ -160,7 +160,7 @@ int read_input_registers_tcp( int slave, int start_addr, int count,
 
 ************************************************************************/
 
-int establecer_estado_digital( int slave, int addr, int state, int fd );
+int establecer_estado_digital( int slave, int addr, int state, int fd , int rtu);
 
 
 
@@ -175,7 +175,7 @@ int establecer_estado_digital( int slave, int addr, int state, int fd );
 
 *************************************************************************/
 
-int escribir_registro_modbus( int slave, int reg_addr, int value, int fd );
+int escribir_registro_modbus( int slave, int reg_addr, int value, int fd, int rtu );
 
 
 

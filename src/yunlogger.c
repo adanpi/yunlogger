@@ -29,9 +29,9 @@
 #include "logersaihbd.h"
 
 
-static char *version = "1.1.01 (16/12/2014: +modbus  23/06/2014 1.1.00: +conf. file)";
+static char *version = "1.1.03 (17/03/2015 + comando_postQM   02/03/2015 +datos adquiridos en cuentas,no en ingenieria + 15 minutales 16/12/2014: +modbus  23/06/2014 1.1.00: +conf. file)";
 
-#define NUMSEN 10
+#define NUMSEN 24
 #define NUMCHARCOMMANDS 133
 
 GN gn;
@@ -41,7 +41,7 @@ BDCONF BdConf;
 int main(int argc, char *argv[])
 {
 	short i,j,n,ipid,muestreo,adquirirDato=0,guardarDato=0,numSen=0,numSenMB,indicePostScan=0;
-	int sen,system_err;
+	int sen,system_err,num_comando;
 	char name[15],path[92];
 	char aux[192],ch[NUMCHARCOMMANDS],comando[NUMSEN][NUMCHARCOMMANDS];
 	long numMuestreos[NUMSEN];
@@ -49,10 +49,11 @@ int main(int argc, char *argv[])
 	struct tm *newtime;
 	char *auxch;
 	FILE *fhf;
-	float valor, valoracum[NUMSEN],valoractual[NUMSEN];
+	long valor, valoracum[NUMSEN],valoractual[NUMSEN];
 	unsigned short valors;
 	unsigned int valorint;
 	unsigned char table[80],caracter[2];
+	float valorfl;
 
 	if ( (argc==2) && (argv[1][1]=='v')){
 		printf("\n************************************");
@@ -62,7 +63,14 @@ int main(int argc, char *argv[])
 		printf("\n************************************\n");
 		return(0);
 	}
-
+	if ( (argc==2) && (argv[1][1]=='i')){
+		printf("\n************************************");
+		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
+		printf("\n\t yunlogger INICIAR BdD: main Version: %s ",version);
+		printf("\n************************************\n");
+		IniLogerBd();	
+		return(0);
+	}
 	strcpy(name,"yunlogger.pid");				// PID del Proceso
 	ipid=getpid();
 	PidLog(name,ipid);
@@ -106,7 +114,7 @@ int main(int argc, char *argv[])
 			}
 			i++;
 		}
-		indicePostScan=i-9;
+		indicePostScan=i-10;
 		fclose(fhf);
 		if(numSen==0 || indicePostScan==0){
 			sprintf(aux,"yunlogger.conf error numSen=0 %hd || indicePostScan=0 %hd",numSen,indicePostScan);
@@ -155,19 +163,20 @@ int main(int argc, char *argv[])
 				AxisLog(aux);				// Log
 				printf("\n\t  %s \n",aux);
 			}
+			num_comando=0;
 			for(sen=0;sen<numSen;sen++){
-				printf("\n\tYUN_DATALOGER:adquisicion datos %d: %s ",sen,comando[sen]);
+				printf("\n\tYUN_DATALOGER:adquisicion datos sen%d:num_comando%d:%s ",sen,num_comando,comando[num_comando]);
 				valor=0;
 				// verificar si es un comando de adquisición múltiple modbus
-				if(comando[sen][0]=='M'){
+				if(comando[num_comando][0]=='M'){
 					// ver cuantas señales MB a muestrear
-					if(sscanf(comando[sen]+1,"%hd",&numSenMB)!=1){
-						sprintf(aux,"yunlogger.conf error en comando MB, numsenMB: %s",comando[sen]);
+					if(sscanf(comando[num_comando]+1,"%hd",&numSenMB)!=1){
+						sprintf(aux,"yunlogger.conf error en comando MB, numsenMB: %s",comando[num_comando]);
 						AxisLog(aux);				// Log
 						printf("\n\t  %s \n",aux);
 						numSenMB=0;
 					}
-					strncpy(auxch,comando[sen] +3,NUMCHARCOMMANDS);
+					strncpy(auxch,comando[num_comando] +3,NUMCHARCOMMANDS);
 					printf("\n\tYUN_DATALOGER: esclavo modbus numSenMB:%d comando %s ",numSenMB,auxch);
 					system_err=system(auxch);
 					if(system_err==-1){
@@ -175,7 +184,7 @@ int main(int argc, char *argv[])
 						AxisLog(aux);				// Log
 						printf("\n\t  %s \n",aux);
 					}
-					// para cada señal ModBus el comando debe dar su valor ingeniería en /tmp/yunlogger.NUMSEN
+					// para cada señal ModBus el comando debe dar su valor de cuentas en /tmp/yunlogger.NUMSEN
 					for(j=0;j<numSenMB;j++){
 						valor=0;
 						strcpy(path,"/tmp/yunlogger");
@@ -183,27 +192,31 @@ int main(int argc, char *argv[])
 						strcat(path,aux);
 						if((fhf=fopen(path,"r"))!=NULL){
 							while(fgets(name,14,fhf)){
-							printf("\n\tYUN_DATALOGER: /tmp/yunlogger: %s ",name);
+							printf("\n\tYUN_DATALOGER: /tmp/yunlogger.%d: %s ",(sen+1),name);
 							}
 						}
 						fclose(fhf);
 			
-						if( sscanf(name,"%f",&valor) != 1 ){
+						if( sscanf(name,"%ld",&valor) != 1 ){
 							printf("\n\tyunlogger error convertir valor %s\n",name);
+							sen++;
+							continue;
 						}
-			
-						printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
 						valoracum[sen]+=valor;
 						valoractual[sen]=valor;
-						numMuestreos[sen]++;
-		
+						numMuestreos[sen]++;	
+			
+						printf("\n\tYUN_DATALOGER: sen: %d valor:%ld num:%d acum:%ld",sen,valor, numMuestreos[sen], valoracum[sen]);
+						
+						sen++;
 					}
-		
+					// en la última señalMB no se debe incrementar, lo hace el bucle for superior(restamos uno)
+					sen--;
 				}else{
 					valor=0;
-					system_err=system(comando[sen]);
+					system_err=system(comando[num_comando]);
 					if(system_err==-1){
-						sprintf(aux,"error system(%s)",comando[sen]);
+						sprintf(aux,"error system(%s)",comando[num_comando]);
 						AxisLog(aux);				// Log
 						printf("\n\t  %s \n",aux);
 					}		
@@ -212,20 +225,23 @@ int main(int argc, char *argv[])
 					strcat(path,aux);
 					if((fhf=fopen(path,"r"))!=NULL){
 						while(fgets(name,14,fhf)){
-							printf("\n\tYUN_DATALOGER: /tmp/yunlogger: %s ",name);
+							printf("\n\tYUN_DATALOGER: /tmp/yunlogger.%d: %s ",sen+1,name);
 						}
 					}
 					fclose(fhf);
 	
-					if( sscanf(name,"%f",&valor) != 1 ){
+					if( sscanf(name,"%ld",&valor) != 1 ){
 						printf("\n\tyunlogger error convertir valor %s\n",name);
+						continue;
 					}
 	
-					printf("\n\tYUN_DATALOGER: valor:%f num:%d acum:%f",valor, numMuestreos[sen], valoracum[sen]);
+					printf("\n\tYUN_DATALOGER: valor:%ld num:%d acum:%ld",valor, numMuestreos[sen], valoracum[sen]);
 					valoracum[sen]+=valor;
 					valoractual[sen]=valor;
-					numMuestreos[sen]++;
+					numMuestreos[sen]++;				
 				}
+				// siguiente comando de adquisición
+				num_comando++;
 			}
 			printf("\n\tYUN_DATALOGER:POST-SCAN: %s ",comando[indicePostScan]);
 			// comando POST-SCANConfTty			
@@ -318,12 +334,14 @@ int main(int argc, char *argv[])
 
 			for(sen=0;sen<qm.NumAna;sen++){
 				if(numMuestreos[sen]>0){
-					valor=valoracum[sen]/numMuestreos[sen];
+					valorfl=(float)valoracum[sen]/numMuestreos[sen];
+					valorint=(unsigned int)valorfl;					
 					qm.Flag[sen]='V';
 				}else
-					valor=-9999.99;
+					valorint=65535;
+
 				printf("\n\tYUN_DATALOGER: Guardar: valor Medio: %f ",valor);
-				qm.FlValorAna[sen]=valor;
+				
 				//cambio a cuentas short protocolo SAC
 				if (BdConf.anaconf.fcm[sen] ==  0) {
 					sprintf(aux,"Factor multiplicativo = 0, senal [%d] %s \n",sen,BdConf.anaconf.tag[sen]);
@@ -332,14 +350,15 @@ int main(int argc, char *argv[])
 					valorint = 0;
 					//qm.FlValorAna[sen]=-9999.99;
 				}else
-					valorint=(unsigned int)(valor/BdConf.anaconf.fcm[sen] - BdConf.anaconf.fca[sen]/BdConf.anaconf.fcm[sen]);
+					valorfl=(valorint*BdConf.anaconf.fcm[sen] + BdConf.anaconf.fca[sen]);
 				if (valorint < 0 || valorint > 65535){
 					sprintf(aux,"Valor Analogico fuera de rango Proto SAC Sen: %d Valor:%.2f\n",sen,valor);
-//					AxisLog(aux);				// Log
+					AxisLog(aux);				// Log
 					printf("\n\t%s\n",aux);
 					valorint = 0;
 					//qm.FlValorAna[sen]=-9999.99;
 				}
+				qm.FlValorAna[sen]=valorfl;
 				valors=(unsigned short)valorint;
 			        qm.ValorAna[sen]=valors;
 				numMuestreos[sen]=0;
@@ -366,11 +385,11 @@ int main(int argc, char *argv[])
 			memset((unsigned char *)&table,0,sizeof(table));
 			i=0;
 			for(sen=0;sen<numSen;sen++){
-				valor = qm.FlValorAna[sen];
-				table[i++] = (unsigned char)*((unsigned char *)&valor);
-				table[i++] = (unsigned char)*((unsigned char *)&valor +1);
-				table[i++] = (unsigned char)*((unsigned char *)&valor +2);
-				table[i++] = (unsigned char)*((unsigned char *)&valor +3);
+				valorfl = qm.FlValorAna[sen];
+				table[i++] = (unsigned char)*((unsigned char *)&valorfl);
+				table[i++] = (unsigned char)*((unsigned char *)&valorfl +1);
+				table[i++] = (unsigned char)*((unsigned char *)&valorfl +2);
+				table[i++] = (unsigned char)*((unsigned char *)&valorfl +3);
 				printf("\n valorqm[%d] %f \n",sen,valor);
         			for(j=0;j<80;j++){
                 			printf("%02x ",table[j]);}
@@ -393,6 +412,15 @@ int main(int argc, char *argv[])
 			}
 			// fin modbus
 			
+			printf("\n\tYUN_DATALOGER:POST-QM: %s ",comando[indicePostScan+1]);
+			// comando POST-QM			
+			system_err=system(comando[indicePostScan+1]);
+			if(system_err==-1){
+				sprintf(aux,"error system(%s)",comando[indicePostScan+1]);
+				AxisLog(aux);				// Log
+				printf("\n\t  %s \n",aux);
+			}
+
 			guardarDato=0;
 			segjulqm=segjulqm+SEGPQM;
 		}

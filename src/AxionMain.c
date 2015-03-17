@@ -27,7 +27,7 @@ Version 1.3
 #define NUMPPPERR 30
 #define TIEMPOESPERA 300	//espera entre ciclos programa en segundos
 
-static char *version = "1.1.02 (12/01/2015 + curl para envio ftp 17/12/2014 + RTC)";
+static char *version = "1.1.03 (02/03/2015 + opc. -rtc 0,1 [enable,disable rtc] 12/01/2015 + curl para envio ftp 17/12/2014 + RTC)";
 
 FILE *fhf;
 GN gn;
@@ -49,7 +49,7 @@ struct tm *newtime;
 char *auxch;
 short flaggprs,flaghora,flagFTP;
 
-int debug,nmes,ndia,nano,hora,minuto,segundo,system_err;
+int debug,nmes,ndia,nano,hora,minuto,segundo,system_err,rtc=0;
 
 int main(int argc, char *argv[])
 {
@@ -59,17 +59,35 @@ int main(int argc, char *argv[])
 	
 	debug=0;
 
-	if ( (argc==2) && (argv[1][1]=='v')){
+	if ( (argc==2) && (argv[1][2]=='v')){
 		printf("\n************************************");
 		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
-		printf("\n\t yunlogger: main Version: %s (%d seg)",version,TIEMPOESPERA);
+		printf("\n\t AxionMain: main Version: %s (%d seg)",version,TIEMPOESPERA);
 		printf("\n************************************\n");
 		return(0);
+	}
+	if ( (argc==2) && (argv[1][1]=='i')){
+		printf("\n************************************");
+		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
+		printf("\n\t AxionMain INICIAR BdD: main Version: %s (%d seg)",version,TIEMPOESPERA);
+		printf("\n************************************\n");
+		IniLogerBd();	
+		return(0);
+	}
+	if ( (argc==3) && ( (argv[1][0]=='-') && (argv[1][1]=='r') && (argv[1][2]=='t') && (argv[1][3]=='c') )  ){
+		printf("\n************************************");
+		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
+		printf("\n\t AxionMain: main Version: %s (%d seg) + RTC",version,TIEMPOESPERA);
+		printf("\n************************************\n");
+		if(sscanf(argv[2],"%d",&rtc)!=1){
+	 		printf("\n\t Error en -rtc ?");
+			return(-1);
+		}
 	}
 	if ( (argc==4) && (argv[1][1]=='d')){
 		printf("\n************************************");
 		printf("\n\t Adan Piñeiro adanpineiro@radsys.es");
-		printf("\n\t yunlogger Version: %s (%d seg)",version,TIEMPOESPERA);
+		printf("\n\t AxionMain Version: %s (%d seg)",version,TIEMPOESPERA);
 		printf("\n**** MODO DEBUG **********");
 		printf("\n************************************\n");
 		debug=1;
@@ -140,9 +158,10 @@ int main(int argc, char *argv[])
 	// segjulqm=((segjulact/SEGPQM)*SEGPQM);
 	// if(ultimoEnvioFTP > (segjulqm+30) ) flagFTP=1;
 
-	// al iniciar se lee RTC y se establece la hora del sistema
+	// al iniciar se lee RTC y se establece la hora del sistema si se pasa el parametro -rtc 1
 
-	leerRTC();
+	if(rtc==1)
+		leerRTC();
 
 	for(;;){   
 
@@ -217,8 +236,9 @@ int main(int argc, char *argv[])
 
 		if (flagFTP==1){
 			EnvioFTP(segjulqm);
-			leerRTC();}
-		else EnvioFTPHist(segjulqm);	// Enviar Historicos si es necesario cuando no se manda el actual
+			if(rtc==1)
+				leerRTC();
+		}else EnvioFTPHist(segjulqm);	// Enviar Historicos si es necesario cuando no se manda el actual
 
 		printf("\n\t-------------------------------------------------------------------------------------------");
 	}
