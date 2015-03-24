@@ -13,7 +13,7 @@
 #define SEGJULCTE 315532800	// Seg desde 1970 hasta 1980
 #define BYTEQM	213		// Num Max de Byte de un QM
 #define BYTEIN	513		// Num Max de Byte de un mensaje de Incidencias
-#define NUMSENANASAICA 18		// Numero Max sen Analogicas Para SAICA
+#define NUMSENANASAICA 24	// Numero Max sen Analogicas Para SAICA
 #define NUMSENGRAY 0		// Numero Max Sen Grays  
 #define NUMSENRS 0		// Numero max Sen RS232 
 #define NUMVALCONT 0		// 4 Contadores por 3 Cincomins = 6 Valores

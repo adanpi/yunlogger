@@ -3,10 +3,10 @@
 #define NUMSENANA 32		// Numero Maximo de señales Analogicas
 #define NUMSENDIG 16		// Numero Maximo de señales Digitales
 #define NUMHISTIN 4000		// Numero Maximo de Registros Incidencias Digitales ;
-##define SEGPQM 600		// Seg por QM (para 10 minutos=600sg)
+//#define SEGPQM 600		// Seg por QM (para 10 minutos=600sg)
 #define SEGPQM 900		// Seg por QM (para 15 minutos=600sg)
 #define SEGPDIA 86400		// Seg por DIA
-##define NUMHISTQM 4464		//(SEGPDIA/SEGPQM)*31 Numero Maximo de Registros Quinceminutales ; Maximo un Mes
+//#define NUMHISTQM 4464		//(SEGPDIA/SEGPQM)*31 Numero Maximo de Registros Quinceminutales ; Maximo un Mes
 #define NUMHISTQM 2976		//(SEGPDIA/SEGPQM)*31 Numero Maximo de Registros Quinceminutales ; Maximo un Mes
 #define SEGJULCTELOGER 631152000	// Seg desde 1970 hasta 1990
 #define SEGJULCTESAC 315532800	// Seg desde 1970 hasta 1980
