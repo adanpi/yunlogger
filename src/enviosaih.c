@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 				strcpy(comando[i-18],ch);
 				if(sscanf(ch,"%hd %s",&numParam,tags_saih[i-18])!=2){
 					sprintf(aux,"yuncontrol.conf error en param-tag: %s",comando[i-18]);
-					AxisLog(aux);				// Log
+					if(debug) AxisLog(aux);				// Log
 					if(debug) printf("\n\t  %s \n",aux);
 					numParam=-1;					
 				}				

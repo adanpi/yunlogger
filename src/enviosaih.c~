@@ -507,9 +507,9 @@ SIN CABECERAS
 					for(k=0;k<numSen;k++){
 						if( j==param_enviar[k] ){
 							if(QmHis[i].Flag[j]=='V')
-								printf("\nA;%s;%s;%3.2f;BUENA",tags_saih[k],fecha,QmHis[i].FlValorAna[j]);
+								printf("A;%s;%s;%3.2f;BUENA\r\n",tags_saih[k],fecha,QmHis[i].FlValorAna[j]);
 							else
-								printf("\nA;%s;%s;%3.2f;MALA",tags_saih[k],fecha,QmHis[i].FlValorAna[j]);
+								printf("A;%s;%s;%3.2f;MALA\r\n",tags_saih[k],fecha,QmHis[i].FlValorAna[j]);
 						}
 					}
 				}
